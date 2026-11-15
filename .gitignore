@@ -1,0 +1,35 @@
+# MATLAB autosave / backup
+*.asv
+*.m~
+*.autosave
+
+# MEX binaries and build output
+*.mex*
+*.mexa64
+*.mexmaci64
+*.mexw64
+codegen/
+
+# Simulink
+slprj/
+*.slxc
+*.slx.autosave
+*.slx.original
+
+# Compiled / packaged
+*.p
+*.mlappinstall
+*.mltbx
+*.prj.bak
+
+# Session / diary / profiler output
+*.log
+diary
+matlab.mat
+
+# OS / editor
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
