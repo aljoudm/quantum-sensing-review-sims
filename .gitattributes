@@ -1,0 +1,2 @@
+# Score files are research records: keep their bytes exactly as delivered.
+data/scores_*.csv -text

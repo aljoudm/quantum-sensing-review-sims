@@ -1,0 +1,21 @@
+domain,criterion,score,sources
+PNT,Field_demonstrations,3,r21; r50
+PNT,Incumbent_comparison,3,r50; r20; r21
+PNT,Independent_replication,3,r20/r45/r47; r42/r46; r40/r48; r39; r19
+PNT,Commercial_availability,2,r06; r41; r50
+Geophysics,Field_demonstrations,3,r39; r40/r48; r19
+Geophysics,Incumbent_comparison,3,r39; r40/r48
+Geophysics,Independent_replication,3,r39; r40/r48; r19
+Geophysics,Commercial_availability,3,r06; r48
+Biomedical,Field_demonstrations,2,r18; r33 (second-hand); r22
+Biomedical,Incumbent_comparison,3,r18; r25; r33
+Biomedical,Independent_replication,3,r18; r33 (second-hand); r22; r25
+Biomedical,Commercial_availability,2,r18; r33
+RF_Radar_Comms,Field_demonstrations,1,r23; r24; r26; r29
+RF_Radar_Comms,Incumbent_comparison,2,r26; r23; r04; r29
+RF_Radar_Comms,Independent_replication,3,r23; r24; r04 (second-hand); r26; r29
+RF_Radar_Comms,Commercial_availability,0,r04; r26; r29
+Networked,Field_demonstrations,0,r16; r37; r17
+Networked,Incumbent_comparison,3,r16; r37; r17
+Networked,Independent_replication,3,r16; r37; r17
+Networked,Commercial_availability,0,r16; r17; r37; r06

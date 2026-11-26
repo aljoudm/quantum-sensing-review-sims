@@ -1,0 +1,205 @@
+===== Sim 2: maturity ranking =====
+Ranking analyses: data/scores_consensus.csv and data/trl_from_ref6.csv
+Agreement statistics only: data/scores_rater1.csv and data/scores_rater2.csv (first round)
+"with r50" uses column score; "without r50" uses score_without_r50
+(empty = same as score). r50 is a preprint.
+
+--- PRIMARY RANKING: unweighted sum of five scores (maximum 15) ---
+TRL score from the r06 lower bound + four consensus scores. Rank 1 = most mature;
+tied domains share the average rank.
+domain           technology_scored             |      sum   rank | sum w/o r50  rank w/o
+Geophysics       Atom gravimeters/gradiometers |       11    1.0 |          11       1.0
+Biomedical       OPM-MEG                       |        8    2.5 |           8       2.5
+PNT              Optical clocks (iodine)       |        8    2.5 |           8       2.5
+RF_Radar_Comms   Rydberg receivers             |        4    4.0 |           4       4.0
+Networked        Non-local interferometry      |        1    5.0 |           1       5.0
+
+Scores summed (with r50 | without r50):
+domain                 TRL     Field   Incumb. IndGroups  Commerc. |       TRL     Field   Incumb. IndGroups  Commerc.
+Geophysics               1         2         3         3         2 |         1         2         3         3         2
+Biomedical               1         1         3         1         2 |         1         1         3         1         2
+PNT                      1         2         2         2         1 |         1         2         2         2         1
+RF_Radar_Comms           0         0         2         2         0 |         0         0         2         2         0
+Networked                0         0         1         0         0 |         0         0         1         0         0
+Cells whose score changes without r50: 0
+Possible r50 inconsistencies in the consensus file: 0
+Consensus rows with an empty "sources" field: 0
+
+--- Inter-rater agreement (independent first round, 20 judged pairs; TRL excluded) ---
+Exact agreement: 55.0 % (11 of 20)
+Quadratic-weighted Cohen's kappa: 0.6349 (95 % bootstrap CI 0.3097 to 0.8772)
+Bootstrap: 10000 resamples of the 20 pairs with replacement, rng(42), percentile interval;
+undefined replicates left out: 0
+NOTE: agreement and kappa describe the first round only, under the original criterion
+definitions. The agreed decision rules (single most mature technology per domain,
+revised field anchors, "Independent_groups" counted for the same capability with the
+same technology, second-hand evidence capped at 2) were adopted for the consensus
+round only.
+Confusion counts (rows rater 1, columns rater 2, categories 0-3):
+  0:   3   0   0   0
+  1:   1   0   0   0
+  2:   1   2   1   0
+  3:   1   1   3   7
+Pairs differing by 2 or more points: 3
+  Geophysics       Incumbent_comparison     rater1 = 3, rater2 = 1
+  Biomedical       Field_demonstrations     rater1 = 2, rater2 = 0
+  Networked        Incumbent_comparison     rater1 = 3, rater2 = 0
+Rater rows with an empty "sources" field: 0
+
+--- TRL inputs (r06 Table VI) ---
+domain            trl_low  trl_high  score_lower  score_upper
+Geophysics              4         6            1            2
+Biomedical              4         6            1            2
+PNT                     4         6            1            2
+RF_Radar_Comms          3         5            0            2
+Networked               2         5            0            2
+
+=== ROBUSTNESS ANALYSES AROUND THE PRIMARY RANKING ===
+Monte Carlo: N = 10000, rng(42) restarted for each run, flat Dirichlet weights;
+each judged consensus score changed by +/-1 with p = 0.20, clipped to [0,3].
+TRL is held fixed in the Monte Carlo: only the 20 judged consensus scores are
+perturbed. TRL uncertainty is covered by the lower- and upper-bound TRL runs.
+
+--- R1. Robustness: Monte Carlo (lower-bound TRL) ---
+                 | with r50                           | without r50                       
+domain           | P(top, ties)  median    p05    p95 | P(top, ties)  median    p05    p95
+Geophysics       |       0.9125    1.00   1.00   2.00    |       0.9125    1.00   1.00   2.00
+Biomedical       |       0.0489    3.00   2.00   4.00    |       0.0489    3.00   2.00   4.00
+PNT              |       0.0410    2.25   2.00   3.00    |       0.0410    2.25   2.00   3.00
+RF_Radar_Comms   |       0.0004    4.00   3.00   4.00    |       0.0004    4.00   3.00   4.00
+Networked        |       0.0000    5.00   5.00   5.00    |       0.0000    5.00   5.00   5.00
+P(top, ties) counts every tie for first, so a column can sum to more than 1.
+Secondary:
+domain           | P(rank<=1.5)  P(rank=1)            | P(rank<=1.5)  P(rank=1)           
+Geophysics       |       0.9125     0.9097            |       0.9125     0.9097
+Biomedical       |       0.0489     0.0481            |       0.0489     0.0481
+PNT              |       0.0410     0.0390            |       0.0410     0.0390
+RF_Radar_Comms   |       0.0004     0.0004            |       0.0004     0.0004
+Networked        |       0.0000     0.0000            |       0.0000     0.0000
+First place tied (share of iterations): with r50 0.0028 | without r50 0.0028
+
+--- R2. Robustness: leave-one-criterion-out (lower-bound TRL) ---
+Rank with one criterion left out (equal weights, no perturbation)
+                 | with r50                                          | without r50
+left out ->      |       TRL     Field   Incumb. IndGroups  Commerc. |       TRL     Field   Incumb. IndGroups  Commerc.
+Geophysics       |       1.0       1.0       1.0       1.0       1.0 |       1.0       1.0       1.0       1.0       1.0
+Biomedical       |       2.5       2.0       3.0       2.0       3.0 |       2.5       2.0       3.0       2.0       3.0
+PNT              |       2.5       3.0       2.0       3.0       2.0 |       2.5       3.0       2.0       3.0       2.0
+RF_Radar_Comms   |       4.0       4.0       4.0       4.0       4.0 |       4.0       4.0       4.0       4.0       4.0
+Networked        |       5.0       5.0       5.0       5.0       5.0 |       5.0       5.0       5.0       5.0       5.0
+
+--- R3. Robustness: upper-bound TRL rerun, Monte Carlo ---
+                 | with r50                           | without r50                       
+domain           | P(top, ties)  median    p05    p95 | P(top, ties)  median    p05    p95
+Geophysics       |       0.9121    1.00   1.00   2.00    |       0.9121    1.00   1.00   2.00
+Biomedical       |       0.0488    3.00   2.00   4.00    |       0.0488    3.00   2.00   4.00
+PNT              |       0.0410    3.00   2.00   4.00    |       0.0410    3.00   2.00   4.00
+RF_Radar_Comms   |       0.0009    4.00   3.00   4.00    |       0.0009    4.00   3.00   4.00
+Networked        |       0.0000    5.00   5.00   5.00    |       0.0000    5.00   5.00   5.00
+P(top, ties) counts every tie for first, so a column can sum to more than 1.
+Secondary:
+domain           | P(rank<=1.5)  P(rank=1)            | P(rank<=1.5)  P(rank=1)           
+Geophysics       |       0.9121     0.9093            |       0.9121     0.9093
+Biomedical       |       0.0488     0.0480            |       0.0488     0.0480
+PNT              |       0.0410     0.0390            |       0.0410     0.0390
+RF_Radar_Comms   |       0.0009     0.0009            |       0.0009     0.0009
+Networked        |       0.0000     0.0000            |       0.0000     0.0000
+First place tied (share of iterations): with r50 0.0028 | without r50 0.0028
+
+--- R3. Robustness: upper-bound TRL rerun, leave-one-criterion-out ---
+Rank with one criterion left out (equal weights, no perturbation)
+                 | with r50                                          | without r50
+left out ->      |       TRL     Field   Incumb. IndGroups  Commerc. |       TRL     Field   Incumb. IndGroups  Commerc.
+Geophysics       |       1.0       1.0       1.0       1.0       1.0 |       1.0       1.0       1.0       1.0       1.0
+Biomedical       |       2.5       2.0       3.0       2.0       3.0 |       2.5       2.0       3.0       2.0       3.0
+PNT              |       2.5       3.0       2.0       3.0       2.0 |       2.5       3.0       2.0       3.0       2.0
+RF_Radar_Comms   |       4.0       4.0       4.0       4.0       4.0 |       4.0       4.0       4.0       4.0       4.0
+Networked        |       5.0       5.0       5.0       5.0       5.0 |       5.0       5.0       5.0       5.0       5.0
+
+Lower versus upper TRL bound (with r50):
+  Highest P(top, ties):  lower Geophysics | upper Geophysics | changes: NO
+  Highest P(rank<=1.5) [secondary]:  lower Geophysics | upper Geophysics | changes: NO
+  Median ranks change: YES
+    PNT              lower 2.25 -> upper 3.00
+
+Lower versus upper TRL bound (without r50):
+  Highest P(top, ties):  lower Geophysics | upper Geophysics | changes: NO
+  Highest P(rank<=1.5) [secondary]:  lower Geophysics | upper Geophysics | changes: NO
+  Median ranks change: YES
+    PNT              lower 2.25 -> upper 3.00
+
+--- R4. Robustness: adversarial test ---
+Starts from the primary ranking (lower-bound TRL). One change moves one judged
+consensus score up or down by 1 within 0-3 (a cell may be moved more than once,
+each step counted); TRL is fixed; a tie for first counts as losing.
+
+[with r50]
+Top-ranked domain: Geophysics (sum 11)
+RESULT (with r50): minimum number of one-point changes for Geophysics to stop being uniquely first: 3
+Domain(s) that can tie or overtake it with that number: PNT, Biomedical
+One minimal set of changes:
+  Geophysics       Field_demonstrations     2 -> 1
+  Geophysics       Incumbent_comparison     3 -> 2
+  Geophysics       Independent_groups       3 -> 2
+This set moves each cell at most once: YES
+Sums after these changes: Geophysics 8; PNT 8; Biomedical 8; RF_Radar_Comms 4; Networked 1;
+
+[without r50]
+Top-ranked domain: Geophysics (sum 11)
+RESULT (without r50): minimum number of one-point changes for Geophysics to stop being uniquely first: 3
+Domain(s) that can tie or overtake it with that number: PNT, Biomedical
+One minimal set of changes:
+  Geophysics       Field_demonstrations     2 -> 1
+  Geophysics       Incumbent_comparison     3 -> 2
+  Geophysics       Independent_groups       3 -> 2
+This set moves each cell at most once: YES
+Sums after these changes: Geophysics 8; PNT 8; Biomedical 8; RF_Radar_Comms 4; Networked 1;
+
+--- R5. Robustness: comparison with the ranking implied by r06 TRL alone ---
+r06 ranking: by trl_low, ties broken by trl_high; remaining ties averaged.
+Only 5 domains are compared.
+
+R5a. Comparison that excludes TRL as a criterion (4 judged criteria only)
+This work: domains ranked by the sum of the four judged consensus scores (maximum 12);
+ties averaged. Secondary: median rank of the same Monte Carlo on these four criteria
+(N = 10000, rng(42), flat Dirichlet on 4 weights, same perturbation rule).
+                           | with r50                           | without r50                       
+domain            r06 rank |    sum   rank MC median    MC rank |    sum   rank MC median    MC rank
+Geophysics             2.0 |     10    1.0      1.00        1.0 |     10    1.0      1.00        1.0
+Biomedical             2.0 |      7    2.5      3.00        3.0 |      7    2.5      3.00        3.0
+PNT                    2.0 |      7    2.5      2.50        2.0 |      7    2.5      2.50        2.0
+RF_Radar_Comms         4.0 |      4    4.0      4.00        4.0 |      4    4.0      4.00        4.0
+Networked              5.0 |      1    5.0      5.00        5.0 |      1    5.0      5.00        5.0
+Spearman rank correlation with r06, excludes TRL as a criterion (sum of four):
+  with r50:    0.9177
+  without r50: 0.9177
+Secondary, same comparison using the Monte Carlo median rank:
+  with r50:    0.8944
+  without r50: 0.8944
+This comparison is computed identically for both TRL bounds, so there is one value
+for each score set.
+
+R5b. PARTLY CIRCULAR (TRL is shared): all 5 criteria
+This work: domains ranked by median Monte Carlo rank; ties averaged.
+                           | with r50                      | without r50                  
+domain            r06 rank | lo med lo rank up med up rank | lo med lo rank up med up rank
+Geophysics             2.0 |   1.00     1.0   1.00     1.0 |   1.00     1.0   1.00     1.0
+Biomedical             2.0 |   3.00     3.0   3.00     2.5 |   3.00     3.0   3.00     2.5
+PNT                    2.0 |   2.25     2.0   3.00     2.5 |   2.25     2.0   3.00     2.5
+RF_Radar_Comms         4.0 |   4.00     4.0   4.00     4.0 |   4.00     4.0   4.00     4.0
+Networked              5.0 |   5.00     5.0   5.00     5.0 |   5.00     5.0   5.00     5.0
+Spearman rank correlation with r06, partly circular:
+  lower bound: with r50 0.8944 | without r50 0.8944
+  upper bound: with r50 0.9177 | without r50 0.9177
+
+--- Effect of removing r50: does anything change? ---
+Primary sums:                        NO
+Primary ranks:                       NO
+Highest P(top, ties), lower bound:   NO
+Highest P(top, ties), upper bound:   NO
+Median ranks, lower bound:           NO
+Median ranks, upper bound:           NO
+Leave-one-out ranks, lower bound:    NO
+Leave-one-out ranks, upper bound:    NO
+Adversarial result (leader, number): NO
+Spearman values (all four):          NO

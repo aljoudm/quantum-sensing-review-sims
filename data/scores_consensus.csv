@@ -1,0 +1,21 @@
+domain,technology_scored,criterion,score,score_without_r50,sources,evidence_type,rule_applied,notes
+PNT,Optical clocks (iodine),Field_demonstrations,2,,21,primary,3,"Ship, 20 days (RIMPAC 2022)"
+PNT,Optical clocks (iodine),Incumbent_comparison,2,,21,primary,4,"Quantitative vs hydrogen maser, on land only"
+PNT,Optical clocks (iodine),Independent_groups,2,,21; 15,primary,5,Raters counted [21] (field iodine clocks) and [15] (laboratory entangled clock) as two groups; [15] is a different clock type
+PNT,Optical clocks (iodine),Commercial_availability,1,,21,primary,,Company prototype; no sale stated
+Geophysics,Atom gravimeters/gradiometers,Field_demonstrations,2,,48; 40; 39; 19,primary,3,"Moving platforms: ship [48], aircraft [40]"
+Geophysics,Atom gravimeters/gradiometers,Incumbent_comparison,3,,48,primary,4,"Side by side with KSS32M spring gravimeter on the same ship, same processing; up to 5x better precision (Table 1)"
+Geophysics,Atom gravimeters/gradiometers,Independent_groups,3,,39; 40/48; 19,primary,5,"Berkeley, ONERA, Birmingham"
+Geophysics,Atom gravimeters/gradiometers,Commercial_availability,2,,43; 48; 40,second_hand,6,Products listed in review [43]; capped at 2
+Biomedical,OPM-MEG,Field_demonstrations,1,,18,primary,3,Human inside magnetically shielded room
+Biomedical,OPM-MEG,Incumbent_comparison,3,,18,primary,4,Same subject and task vs 275-channel SQUID-MEG; raters judged separate sessions as same conditions
+Biomedical,OPM-MEG,Independent_groups,1,,18; 33,primary; second_hand,6,One primary study; other groups only second-hand in [33]
+Biomedical,OPM-MEG,Commercial_availability,2,,18; 33,primary,,QuSpin OPM sensors sold
+RF_Radar_Comms,Rydberg receivers,Field_demonstrations,0,,23; 24,primary,3,Laboratory and anechoic chamber count as laboratory
+RF_Radar_Comms,Rydberg receivers,Incumbent_comparison,2,,23; 04,primary; second_hand,4; 6,Standard-antenna calibration [23]; sensitivity comparable to classical receivers per review [04]
+RF_Radar_Comms,Rydberg receivers,Independent_groups,2,,23; 24,primary,5; 6,Two primary groups; further groups only second-hand in [04]
+RF_Radar_Comms,Rydberg receivers,Commercial_availability,0,,04,second_hand,,No product
+Networked,Non-local interferometry,Field_demonstrations,0,,37,primary,3,Fibre spools count as laboratory
+Networked,Non-local interferometry,Incumbent_comparison,1,,37,primary,4,Qualitative only: 1.55 km fibre baseline set against the 330 m baseline of the leading optical telescope array; no performance comparison with a classical interferometer
+Networked,Non-local interferometry,Independent_groups,0,,37,primary,5,Single study
+Networked,Non-local interferometry,Commercial_availability,0,,37,primary,,No product

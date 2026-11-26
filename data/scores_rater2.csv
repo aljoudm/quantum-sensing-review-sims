@@ -1,0 +1,21 @@
+domain,criterion,score,sources
+PNT,Field_demonstrations,3,21; 40; 48; 19; 39
+PNT,Incumbent_comparison,2,21; 20
+PNT,Independent_replication,3,20; 45; 47; 42; 46; 40; 48; 21; 39; 19
+PNT,Commercial_availability,1,21
+Geophysics,Field_demonstrations,3,39; 48; 40; 19
+Geophysics,Incumbent_comparison,1,48
+Geophysics,Independent_replication,3,39; 40; 48; 19
+Geophysics,Commercial_availability,2,48; 40; 43
+Biomedical,Field_demonstrations,0,18; 22; 25; 33
+Biomedical,Incumbent_comparison,2,18; 33
+Biomedical,Independent_replication,3,18; 22; 25; 33
+Biomedical,Commercial_availability,2,18; 33
+RF_Radar_Comms,Field_demonstrations,0,23; 24; 26
+RF_Radar_Comms,Incumbent_comparison,1,04
+RF_Radar_Comms,Independent_replication,3,23; 24; 26; 04
+RF_Radar_Comms,Commercial_availability,0,04; 26; 24
+Networked,Field_demonstrations,0,16; 37; 17
+Networked,Incumbent_comparison,0,16; 37; 17
+Networked,Independent_replication,3,16; 37; 17
+Networked,Commercial_availability,0,16; 17; 37; 06
