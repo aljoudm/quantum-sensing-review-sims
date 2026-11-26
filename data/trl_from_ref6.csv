@@ -1,0 +1,6 @@
+domain,ref6_domain_label,trl_low,trl_high,score_lower_rule,score_upper_rule,source
+PNT,"PNT",4,6,1,2,"r06 Table VI p.1213"
+Geophysics,"Geophysics & exploration",4,6,1,2,"r06 Table VI p.1213"
+Biomedical,"Biomedicine",4,6,1,2,"r06 Table VI p.1213"
+RF_Radar_Comms,"Communications & security",3,5,0,2,"r06 Table VI p.1213"
+Networked,"Quantum networking & distributed sensing",2,5,0,2,"r06 Table VI p.1213"
