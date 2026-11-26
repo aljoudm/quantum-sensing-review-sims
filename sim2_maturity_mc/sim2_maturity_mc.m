@@ -17,6 +17,8 @@ function res = sim2_maturity_mc()
 %   The ranking is compared with r06's TRL ranking twice: from the 4 rated
 %   criteria only (excludes TRL as a criterion) and from all 5 (partly
 %   circular, TRL is shared).
+%   Also reports a bootstrap 95 % interval for kappa and the fewest one-point
+%   score changes that remove the unique first place (equal weights).
 %   The script stops on any missing, duplicated or invalid entry; it never
 %   fills in scores.
 %
@@ -38,6 +40,9 @@ display_names = {'PNT', 'Geophysics', 'Biomedical', 'RF/Radar/Comms', 'Networked
 rated    = {'Field_demonstrations', 'Incumbent_comparison', ...
             'Independent_replication', 'Commercial_availability'};
 crit_short = {'TRL', 'Field', 'Incumb.', 'Replic.', 'Commerc.'};   % TRL first
+% LaTeX table headers. Independent_replication (CSV name) is displayed as
+% "Independent groups"; stacked so that the table does not get wider.
+crit_table = {'TRL', 'Field', 'Incumb.', '\shortstack{Independent\\groups}', 'Commerc.'};
 nD = numel(domains);
 nC = numel(crit_short);          % TRL + 4 rated criteria
 opt.seed      = 42;
@@ -45,6 +50,8 @@ opt.N         = 10000;           % Monte Carlo iterations
 opt.p_perturb = 0.2;             % probability that a score is changed by +/-1
 opt.score_min = 0;
 opt.score_max = 3;
+opt.boot_B    = 10000;           % bootstrap replicates for kappa
+opt.boot_seed = 42;
 % Perturbation models disagreement between raters, so it applies to the
 % rated criteria (columns 2-5). The TRL column is not rated; its
 % uncertainty is covered by the lower/upper-bound runs.
@@ -73,6 +80,8 @@ r1 = R1(:); r2 = R2(:);
 n_pairs = numel(r1);
 pct_agree = 100*mean(r1 == r2);
 [kappa, confusion] = quad_weighted_kappa(r1, r2, opt.score_min:opt.score_max);
+boot = bootstrap_kappa(r1, r2, opt);     % 95 % percentile interval
+if isnan(kappa), boot.ci = [NaN NaN]; end
 [di, ci] = find(abs(R1 - R2) >= 2);
 big = sortrows([di(:), ci(:)]);      % [domain index, rated criterion index]
 
@@ -98,6 +107,10 @@ rated_only = analyse(consensus, opt_rated);
 rated_only.med_rank = average_rank(-rated_only.med);
 rho_rated = spearman(rated_only.med_rank, ref_rank);
 
+% Adversarial robustness: consensus scores, equal weights, lower TRL bound.
+% Column 1 (TRL) is fixed; columns 2-5 are the judged cells.
+adv = adversarial([trl.score_lower, consensus], 2:nC, opt.score_min, opt.score_max);
+
 % Comparison of the two runs
 lead_main     = leaders(main.p_top);
 lead_upper    = leaders(upper.p_top);
@@ -111,7 +124,7 @@ med_changed   = find(abs(main.med - upper.med) > 1e-9);
 [~, order] = sortrows([-main.p_top(:), main.med(:), mean(main.ranks, 1).']);
 
 write_loo_table(fullfile(here, 'loo_table.tex'), main.p_top, main.loo, order, ...
-                display_names, crit_short);
+                display_names, crit_table);
 
 %% Results file (also printed to the console)
 fid = fopen(fullfile(here, 'results.txt'), 'w');
@@ -136,7 +149,11 @@ emit(fid, 'Exact agreement: %.1f %% (%d of %d)\n', pct_agree, sum(r1 == r2), n_p
 if isnan(kappa)
     emit(fid, 'Quadratic-weighted Cohen''s kappa: undefined (no expected disagreement)\n');
 else
-    emit(fid, 'Quadratic-weighted Cohen''s kappa: %.4f\n', kappa);
+    emit(fid, 'Quadratic-weighted Cohen''s kappa: %.4f (95 %% bootstrap CI %.4f to %.4f)\n', ...
+         kappa, boot.ci(1), boot.ci(2));
+    emit(fid, ['Bootstrap: %d resamples of the %d pairs with replacement, rng(%d), ' ...
+               'percentile interval;\nundefined replicates left out: %d\n'], ...
+         opt.boot_B, n_pairs, opt.boot_seed, boot.n_undefined);
 end
 emit(fid, 'Confusion counts (rows rater 1, columns rater 2, categories 0-3):\n');
 for i = 1:size(confusion, 1)
@@ -212,6 +229,8 @@ emit(fid, 'Spearman rank correlation with r06, partly circular, lower bound: %s\
      rho_text(rho_main));
 emit(fid, 'Spearman rank correlation with r06, partly circular, upper bound: %s\n', ...
      rho_text(rho_upper));
+
+report_adversarial(fid, adv, domains, [{'TRL'}, rated]);
 clear closer
 
 %% Figure (main result)
@@ -250,6 +269,8 @@ res = struct('pct_agree', pct_agree, 'kappa', kappa, 'confusion', confusion, ...
              'main', main, 'upper', upper, 'ref_rank', ref_rank, ...
              'rho_main', rho_main, 'rho_upper', rho_upper, ...
              'rated_only', rated_only, 'rho_rated', rho_rated, ...
+             'kappa_ci', boot.ci, 'boot_undefined', boot.n_undefined, ...
+             'adversarial', adv, ...
              'lead_changed', lead_changed, 'median_changed', med_changed, ...
              'no_source', {no_source}, 'order', order);
 if nargout == 0
@@ -341,6 +362,88 @@ if den == 0
 else
     kappa = 1 - sum(W(:).*P(:))/den;
 end
+end
+
+function b = bootstrap_kappa(r1, r2, opt)
+% Resample the rated pairs with replacement; percentile 95 % interval.
+% Replicates with undefined kappa (both raters constant and equal) are
+% counted and left out.
+n = numel(r1);
+k = nan(opt.boot_B, 1);
+rng(opt.boot_seed);
+for it = 1:opt.boot_B
+    idx = randi(n, n, 1);
+    k(it) = quad_weighted_kappa(r1(idx), r2(idx), opt.score_min:opt.score_max);
+end
+ok = ~isnan(k);
+b.n_undefined = sum(~ok);
+if any(ok)
+    b.ci = [percentile(k(ok), 2.5), percentile(k(ok), 97.5)];
+else
+    b.ci = [NaN NaN];
+end
+end
+
+function a = adversarial(S, judged, lo, hi)
+% Fewest one-point changes to judged cells after which the top domain (equal
+% weights, sum of scores) is no longer uniquely first. A tie counts as losing.
+% One change moves one cell by +1 or -1 and stays within [lo, hi]; a cell may
+% be moved more than once, each step counted.
+%
+% Each change alters the margin (leader - challenger) by at most 1, so
+% challenger j needs at least ceil(margin) changes: lowering the leader or
+% raising j. The minimum over challengers is therefore exact.
+tol = 1e-9;
+total = sum(S, 2);
+top = find(total >= max(total) - tol);
+a = struct('scores', S, 'totals', total, 'leaders', top, 'tied', numel(top) > 1, ...
+           'n_min', NaN, 'challengers', [], 'changes', zeros(0, 3), ...
+           'new_totals', total, 'distinct', true);
+if a.tied
+    return;
+end
+L = top;
+best = [];                     % [n changes, repeats a cell, challenger]
+sets = {};
+for j = setdiff(1:size(S, 1), L)
+    need = ceil(total(L) - total(j) - tol);
+    moves = zeros(0, 3);       % [domain, criterion, step]
+    for pass = 1:(hi - lo)     % first pass uses each cell once
+        for c = judged
+            if S(L, c) - pass >= lo - tol
+                moves(end+1, :) = [L, c, -1]; %#ok<AGROW>
+            end
+        end
+        for c = judged
+            if S(j, c) + pass <= hi + tol
+                moves(end+1, :) = [j, c, +1]; %#ok<AGROW>
+            end
+        end
+    end
+    if size(moves, 1) >= need
+        set_j = moves(1:need, :);
+        repeats = size(unique(set_j(:, 1:2), 'rows'), 1) < need;
+        best(end+1, :) = [need, repeats, j]; %#ok<AGROW>
+        sets{end+1} = set_j;                 %#ok<AGROW>
+    end
+end
+if isempty(best)
+    return;                    % cannot be displaced within the score range
+end
+a.n_min = min(best(:, 1));
+at_min = find(best(:, 1) == a.n_min);
+a.challengers = best(at_min, 3).';
+% Among the minimal sets prefer one that moves every cell only once
+[~, p] = min(best(at_min, 2));
+pick = at_min(p);
+a.changes = sets{pick};
+a.distinct = ~best(pick, 2);
+S2 = S;
+for k = 1:size(a.changes, 1)
+    S2(a.changes(k, 1), a.changes(k, 2)) = ...
+        S2(a.changes(k, 1), a.changes(k, 2)) + a.changes(k, 3);
+end
+a.new_totals = sum(S2, 2);
 end
 
 function rho = spearman(rank_a, rank_b)
@@ -544,6 +647,56 @@ emit(fid, '%-16s%s\n', 'left out ->', sprintf(' %9s', crit_short{:}));
 for i = 1:numel(domains)
     emit(fid, '%-16s%s\n', domains{i}, sprintf(' %9.1f', a.loo(i, :)));
 end
+end
+
+function report_adversarial(fid, a, domains, criteria)
+emit(fid, '\n--- 7. Adversarial robustness ---\n');
+emit(fid, ['Baseline ranking used here: the unweighted sum of five scores per ' ...
+           'domain (maximum 15):\nthe four consensus scores plus the TRL score ' ...
+           'from r06 (lower bound; not a rater consensus).\n']);
+emit(fid, ['The other analyses in this file do not use this baseline: the Monte ' ...
+           'Carlo draws random\nweights and perturbs scores, the r06 comparisons ' ...
+           'rank by median Monte Carlo rank, and\nleave-one-out uses equal ' ...
+           'weights on four criteria.\n']);
+[~, order] = sort(a.totals, 'descend');
+ranks = average_rank(a.totals);
+emit(fid, '%-16s %12s %6s\n', 'domain', 'sum (of 15)', 'rank');
+for i = order.'
+    emit(fid, '%-16s %12.1f %6.1f\n', domains{i}, a.totals(i), ranks(i));
+end
+if a.tied
+    emit(fid, 'RESULT: %d domains already tie for first: %s\n', numel(a.leaders), ...
+         strjoin(domains(a.leaders), ', '));
+    emit(fid, 'No domain is uniquely first, so no minimum number of changes applies.\n');
+    return;
+end
+L = a.leaders;
+if isnan(a.n_min)
+    emit(fid, 'RESULT: %s stays uniquely first for any changes within 0-3.\n', domains{L});
+    return;
+end
+emit(fid, ['Rule: one change moves one judged consensus score up or down by 1 within ' ...
+           '0-3 (a cell\nmay be moved more than once, each step counted); TRL is ' ...
+           'fixed; a tie for first counts\nas losing.\n']);
+emit(fid, 'Top-ranked domain: %s (sum %.1f)\n', domains{L}, a.totals(L));
+emit(fid, ['RESULT: minimum number of one-point changes for %s to stop being ' ...
+           'uniquely first: %d\n'], domains{L}, a.n_min);
+emit(fid, 'Domain(s) that can tie or overtake it with that number: %s\n', ...
+     strjoin(domains(a.challengers), ', '));
+emit(fid, 'One minimal set of changes:\n');
+cells = unique(a.changes(:, 1:2), 'rows', 'stable');
+for k = 1:size(cells, 1)
+    i = cells(k, 1); c = cells(k, 2);
+    step = sum(a.changes(a.changes(:, 1) == i & a.changes(:, 2) == c, 3));
+    emit(fid, '  %-16s %-24s %.1f -> %.1f\n', domains{i}, criteria{c}, ...
+         a.scores(i, c), a.scores(i, c) + step);
+end
+emit(fid, 'This set moves each cell at most once: %s\n', yesno(a.distinct));
+emit(fid, 'Sums after these changes:');
+for i = order.'
+    emit(fid, ' %s %.1f;', domains{i}, a.new_totals(i));
+end
+emit(fid, '\n');
 end
 
 function s = name_list(domains, idx)
