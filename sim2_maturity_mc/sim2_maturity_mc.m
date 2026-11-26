@@ -5,8 +5,9 @@ function res = sim2_maturity_mc()
 %   ROBUSTNESS analyses around it: Monte Carlo over random weights and
 %   +/-1 score perturbations, leave-one-criterion-out, upper-bound TRL
 %   rerun, adversarial score changes, and comparison with the ranking implied
-%   by r06's TRL ranges (excluding TRL as a criterion; and partly circular,
-%   TRL shared). Every ranking analysis is run twice: with column "score" and
+%   by r06's TRL ranges (excluding TRL as a criterion, ranked by the sum of
+%   the four judged scores; and partly circular, TRL shared). Table and
+%   figure list the domains in primary-ranking order. Every ranking analysis is run twice: with column "score" and
 %   with "score_without_r50" (r50 is a preprint).
 %
 %   Inputs (../data):
@@ -97,11 +98,10 @@ ref_rank = average_rank(100*trl.low + trl.high);
 with    = rank_all(trl, cons.score,   ref_rank, opt);
 without = rank_all(trl, cons.without, ref_rank, opt);
 
-% Report/table order: primary sum, then Monte Carlo P(top, ties), median
+% Report, table and figure order: primary sum; domains with equal sums are
+% listed by Monte Carlo P(top, ties), then median rank
 [~, porder] = sortrows([-with.sum(:), -with.main.p_top(:), with.main.med(:)]);
-% Figure order (Monte Carlo panel): P(top, ties), then median, mean rank
-[~, order] = sortrows([-with.main.p_top(:), with.main.med(:), ...
-                       mean(with.main.ranks, 1).']);
+order = porder;
 
 write_loo_table(fullfile(here, 'loo_table.tex'), with, without.sum, porder, ...
                 display_names, crit_table);
@@ -134,6 +134,12 @@ else
                'percentile interval;\nundefined replicates left out: %d\n'], ...
          opt.boot_B, n_pairs, opt.boot_seed, boot.n_undefined);
 end
+emit(fid, ['NOTE: agreement and kappa describe the first round only, under the ' ...
+           'original criterion\ndefinitions. The agreed decision rules (single ' ...
+           'most mature technology per domain,\nrevised field anchors, ' ...
+           '"Independent_groups" counted for the same capability with the\n' ...
+           'same technology, second-hand evidence capped at 2) were adopted for ' ...
+           'the consensus\nround only.\n']);
 emit(fid, 'Confusion counts (rows rater 1, columns rater 2, categories 0-3):\n');
 for i = 1:size(confusion, 1)
     emit(fid, '  %d:%s\n', i - 1, sprintf(' %3d', confusion(i, :)));
@@ -248,14 +254,21 @@ b.rank   = average_rank(b.sum);
 b.main  = analyse(S_low, opt);
 b.upper = analyse(S_up, opt);
 
-% Comparison with r06: rank by median Monte Carlo rank (smaller = better)
+% Comparison with r06 that excludes TRL as a criterion: domains ranked by the
+% sum of the four judged consensus scores
+b.rated_sum      = sum(C, 2).';
+b.rated_sum_rank = average_rank(b.rated_sum);
+b.rho_rated      = spearman(b.rated_sum_rank, ref_rank);
+
+% Median Monte Carlo ranks (smaller = better): secondary line of that
+% comparison, and the partly circular comparison with all five criteria
 b.main.med_rank  = average_rank(-b.main.med);
 b.upper.med_rank = average_rank(-b.upper.med);
 opt_rated = opt;
 opt_rated.perturbed = 1:size(C, 2);
 b.rated_only = analyse(C, opt_rated);            % excludes TRL as a criterion
 b.rated_only.med_rank = average_rank(-b.rated_only.med);
-b.rho_rated = spearman(b.rated_only.med_rank, ref_rank);
+b.rho_rated_mc = spearman(b.rated_only.med_rank, ref_rank);   % secondary
 b.rho_main  = spearman(b.main.med_rank,  ref_rank);    % partly circular
 b.rho_upper = spearman(b.upper.med_rank, ref_rank);    % partly circular
 
@@ -559,7 +572,8 @@ for r = 1:size(rows, 1)
         c.score(i, j) = v;
         c.without(i, j) = alt;
         src = cell_text(rows{r, 7});
-        cites = ~isempty(regexpi(src, 'r50(?!\d)', 'once'));
+        % reference 50 written as "r50" or as the bare number "50"
+        cites = ~isempty(regexpi(src, '(?<!\d)50(?!\d)', 'once'));
         if isempty(src)
             c.no_source{end+1} = sprintf('%s / %s', dom, cri); %#ok<AGROW>
         end
@@ -826,27 +840,36 @@ function report_r06(fid, w, wo, ref_rank, domains, porder, opt)
 emit(fid, ['\n--- R5. Robustness: comparison with the ranking implied by r06 TRL ' ...
            'alone ---\n']);
 emit(fid, 'r06 ranking: by trl_low, ties broken by trl_high; remaining ties averaged.\n');
-emit(fid, 'This work: domains ranked by median Monte Carlo rank; ties averaged.\n');
 emit(fid, 'Only %d domains are compared.\n', numel(domains));
 
 emit(fid, '\nR5a. Comparison that excludes TRL as a criterion (4 judged criteria only)\n');
-emit(fid, ['Same Monte Carlo (N = %d, rng(%d), flat Dirichlet on 4 weights, same ' ...
-           'perturbation rule).\n'], opt.N, opt.seed);
-emit(fid, '%-16s %9s | %-18s | %-18s\n', '', '', 'with r50', 'without r50');
-emit(fid, '%-16s %9s | %8s %9s | %8s %9s\n', 'domain', 'r06 rank', 'median', ...
-     'this rank', 'median', 'this rank');
+emit(fid, ['This work: domains ranked by the sum of the four judged consensus ' ...
+           'scores (maximum 12);\nties averaged. Secondary: median rank of the ' ...
+           'same Monte Carlo on these four criteria\n(N = %d, rng(%d), flat ' ...
+           'Dirichlet on 4 weights, same perturbation rule).\n'], opt.N, opt.seed);
+emit(fid, '%-16s %9s | %-34s | %-34s\n', '', '', 'with r50', 'without r50');
+head = sprintf('%6s %6s %9s %10s', 'sum', 'rank', 'MC median', 'MC rank');
+emit(fid, '%-16s %9s | %-34s | %-34s\n', 'domain', 'r06 rank', head, head);
 for i = porder.'
-    emit(fid, '%-16s %9.1f | %8.2f %9.1f | %8.2f %9.1f\n', domains{i}, ref_rank(i), ...
-         w.rated_only.med(i), w.rated_only.med_rank(i), ...
-         wo.rated_only.med(i), wo.rated_only.med_rank(i));
+    emit(fid, '%-16s %9.1f | %6d %6.1f %9.2f %10.1f | %6d %6.1f %9.2f %10.1f\n', ...
+         domains{i}, ref_rank(i), ...
+         w.rated_sum(i), w.rated_sum_rank(i), w.rated_only.med(i), ...
+         w.rated_only.med_rank(i), ...
+         wo.rated_sum(i), wo.rated_sum_rank(i), wo.rated_only.med(i), ...
+         wo.rated_only.med_rank(i));
 end
-emit(fid, 'Spearman rank correlation with r06, excludes TRL as a criterion:\n');
+emit(fid, ['Spearman rank correlation with r06, excludes TRL as a criterion ' ...
+           '(sum of four):\n']);
 emit(fid, '  with r50:    %s\n  without r50: %s\n', rho_text(w.rho_rated), ...
      rho_text(wo.rho_rated));
+emit(fid, 'Secondary, same comparison using the Monte Carlo median rank:\n');
+emit(fid, '  with r50:    %s\n  without r50: %s\n', rho_text(w.rho_rated_mc), ...
+     rho_text(wo.rho_rated_mc));
 emit(fid, ['This comparison is computed identically for both TRL bounds, so there ' ...
            'is one value\nfor each score set.\n']);
 
 emit(fid, '\nR5b. PARTLY CIRCULAR (TRL is shared): all 5 criteria\n');
+emit(fid, 'This work: domains ranked by median Monte Carlo rank; ties averaged.\n');
 emit(fid, '%-16s %9s | %-29s | %-29s\n', '', '', 'with r50', 'without r50');
 head = sprintf('%6s %7s %6s %7s', 'lo med', 'lo rank', 'up med', 'up rank');
 emit(fid, '%-16s %9s | %-29s | %-29s\n', 'domain', 'r06 rank', head, head);
@@ -878,9 +901,9 @@ emit(fid, 'Leave-one-out ranks, lower bound:    %s\n', differs(w.main.loo, wo.ma
 emit(fid, 'Leave-one-out ranks, upper bound:    %s\n', differs(w.upper.loo, wo.upper.loo));
 emit(fid, 'Adversarial result (leader, number): %s\n', ...
      differs({w.adv.leaders, w.adv.n_min}, {wo.adv.leaders, wo.adv.n_min}));
-emit(fid, 'Spearman values (all three):         %s\n', ...
-     differs(round([w.rho_rated, w.rho_main, w.rho_upper], 10), ...
-             round([wo.rho_rated, wo.rho_main, wo.rho_upper], 10)));
+emit(fid, 'Spearman values (all four):          %s\n', ...
+     differs(round([w.rho_rated, w.rho_rated_mc, w.rho_main, w.rho_upper], 10), ...
+             round([wo.rho_rated, wo.rho_rated_mc, wo.rho_main, wo.rho_upper], 10)));
 end
 
 function s = name_list(domains, idx)
