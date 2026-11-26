@@ -1,7 +1,7 @@
 domain,technology_scored,criterion,score,score_without_r50,sources,evidence_type,rule_applied,notes
 PNT,Optical clocks (iodine),Field_demonstrations,2,,21,primary,3,"Ship, 20 days (RIMPAC 2022)"
 PNT,Optical clocks (iodine),Incumbent_comparison,2,,21,primary,4,"Quantitative vs hydrogen maser, on land only"
-PNT,Optical clocks (iodine),Independent_groups,2,,21; 15,primary,5,Raters counted [21] (field iodine clocks) and [15] (laboratory entangled clock) as two groups; [15] is a different clock type
+PNT,Optical clocks (iodine),Independent_groups,2,,21; 15,primary,5,Same technology class (optical clocks): [21] Vector Atomic and [15] a different group; rule applied consistently with Rydberg [23]/[24] and gravimetry [19]/[39]/[40]/[48]
 PNT,Optical clocks (iodine),Commercial_availability,1,,21,primary,,Company prototype; no sale stated
 Geophysics,Atom gravimeters/gradiometers,Field_demonstrations,2,,48; 40; 39; 19,primary,3,"Moving platforms: ship [48], aircraft [40]"
 Geophysics,Atom gravimeters/gradiometers,Incumbent_comparison,3,,48,primary,4,"Side by side with KSS32M spring gravimeter on the same ship, same processing; up to 5x better precision (Table 1)"
