@@ -15,7 +15,8 @@ function res = sim2_maturity_mc()
 %   TRL is held fixed in the Monte Carlo; only rated scores are perturbed.
 %   Primary probability: P(top, ties), counting every tie for first.
 %   The ranking is compared with r06's TRL ranking twice: from the 4 rated
-%   criteria only (non-circular) and from all 5 (partly circular).
+%   criteria only (excludes TRL as a criterion) and from all 5 (partly
+%   circular, TRL is shared).
 %   The script stops on any missing, duplicated or invalid entry; it never
 %   fills in scores.
 %
@@ -90,7 +91,7 @@ upper.med_rank = average_rank(-upper.med);
 rho_main  = spearman(main.med_rank,  ref_rank);    % partly circular
 rho_upper = spearman(upper.med_rank, ref_rank);    % partly circular
 
-% Non-circular comparison: the 4 rated criteria only, TRL excluded
+% Comparison that excludes TRL as a criterion: the 4 rated criteria only
 opt_rated = opt;
 opt_rated.perturbed = 1:numel(rated);
 rated_only = analyse(consensus, opt_rated);
@@ -185,7 +186,7 @@ emit(fid, 'r06 ranking: by trl_low, ties broken by trl_high; remaining ties aver
 emit(fid, 'This work: domains ranked by median Monte Carlo rank; ties averaged.\n');
 emit(fid, 'Only %d domains are compared.\n', nD);
 
-emit(fid, '\n6a. NON-CIRCULAR COMPARISON: 4 rated criteria only (TRL excluded)\n');
+emit(fid, '\n6a. Comparison that excludes TRL as a criterion (4 rated criteria only)\n');
 emit(fid, ['Same Monte Carlo (N = %d, rng(%d), flat Dirichlet on 4 weights, same ' ...
            'perturbation rule).\n'], opt.N, opt.seed);
 emit(fid, '%-16s %9s %12s %7s %6s %6s %10s\n', 'domain', 'r06 rank', ...
@@ -195,9 +196,10 @@ for i = order.'
          ref_rank(i), rated_only.p_top(i), rated_only.med(i), rated_only.p05(i), ...
          rated_only.p95(i), rated_only.med_rank(i));
 end
-emit(fid, 'Spearman rank correlation with r06, non-circular: %s\n', rho_text(rho_rated));
-emit(fid, ['Without TRL the scores do not depend on the TRL bound, so this single ' ...
-           'value\napplies to both bounds.\n']);
+emit(fid, 'Spearman rank correlation with r06, excludes TRL as a criterion: %s\n', ...
+     rho_text(rho_rated));
+emit(fid, ['This comparison is computed identically for both TRL bounds, so there ' ...
+           'is a\nsingle value.\n']);
 
 emit(fid, '\n6b. PARTLY CIRCULAR (TRL is shared): all 5 criteria\n');
 emit(fid, '%-16s %9s %12s %12s %13s %13s\n', 'domain', 'r06 rank', ...
