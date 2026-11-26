@@ -51,6 +51,15 @@ figures/                 exported PDF and PNG figures
   ```
 - **Output:** `figures/fig_quantum_limit_gap.pdf` (and `.png`).
 
+## Combined figure: Simulations 3 and 4
+
+- **Purpose:** Panels (a) Sim 3 and (b) Sim 4 in one column-width figure. Both are re-plotted from the same data and plotting functions (`sim3_data.m`, `sim3_plot.m`, `sim4_data.m`, `sim4_plot.m`) as the individual figures.
+- **How to run** (after Sim 3 and Sim 4, which print the verification tables):
+  ```
+  "C:\Program Files\MATLAB\R2026a\bin\matlab.exe" -batch "combine_loss_gap"
+  ```
+- **Output:** `figures/fig_loss_gap.pdf` (and `.png`).
+
 ## Simulation 2: Maturity Monte Carlo
 
 - **Purpose:** Monte Carlo test of whether the maturity ranking of six application domains depends on criterion weights or rater disagreement; also reports inter-rater agreement (weighted Cohen's kappa).
