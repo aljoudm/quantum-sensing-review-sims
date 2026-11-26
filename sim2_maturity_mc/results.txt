@@ -32,9 +32,8 @@ Bootstrap: 10000 resamples of the 20 pairs with replacement, rng(42), percentile
 undefined replicates left out: 0
 NOTE: agreement and kappa describe the first round only, under the original criterion
 definitions. The agreed decision rules (single most mature technology per domain,
-revised field anchors, "Independent_groups" counted for the same capability with the
-same technology, second-hand evidence capped at 2) were adopted for the consensus
-round only.
+revised field anchors, "Independent_groups" counted for the same technology class,
+second-hand evidence capped at 2) were adopted for the consensus round only.
 Confusion counts (rows rater 1, columns rater 2, categories 0-3):
   0:   3   0   0   0
   1:   1   0   0   0

@@ -6,7 +6,7 @@ PNT,Optical clocks (iodine),Commercial_availability,1,,21,primary,,Company proto
 Geophysics,Atom gravimeters/gradiometers,Field_demonstrations,2,,48; 40; 39; 19,primary,3,"Moving platforms: ship [48], aircraft [40]"
 Geophysics,Atom gravimeters/gradiometers,Incumbent_comparison,3,,48,primary,4,"Side by side with KSS32M spring gravimeter on the same ship, same processing; up to 5x better precision (Table 1)"
 Geophysics,Atom gravimeters/gradiometers,Independent_groups,3,,39; 40/48; 19,primary,5,"Berkeley, ONERA, Birmingham"
-Geophysics,Atom gravimeters/gradiometers,Commercial_availability,2,,43; 48; 40,second_hand,6,Products listed in review [43]; capped at 2
+Geophysics,Atom gravimeters/gradiometers,Commercial_availability,2,,42; 43; 48; 40,second_hand,6,Instruments delivered to customers per reviews [42] [43]; capped at 2
 Biomedical,OPM-MEG,Field_demonstrations,1,,18,primary,3,Human inside magnetically shielded room
 Biomedical,OPM-MEG,Incumbent_comparison,3,,18,primary,4,Same subject and task vs 275-channel SQUID-MEG; raters judged separate sessions as same conditions
 Biomedical,OPM-MEG,Independent_groups,1,,18; 33,primary; second_hand,6,One primary study; other groups only second-hand in [33]
