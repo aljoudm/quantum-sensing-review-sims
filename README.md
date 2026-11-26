@@ -62,10 +62,12 @@ figures/                 exported PDF and PNG figures
 
 ## Simulation 2: Maturity Monte Carlo
 
-- **Purpose:** Monte Carlo test of whether the maturity ranking of five application domains (PNT, Geophysics, Biomedical, RF_Radar_Comms, Networked) depends on criterion weights, rater disagreement or the TRL scoring bound; also reports inter-rater agreement (weighted Cohen's kappa) and a comparison with the ranking implied by r06's TRL alone.
+- **Purpose:** Maturity ranking of five application domains (PNT, Geophysics, Biomedical, RF_Radar_Comms, Networked). The primary ranking is the unweighted sum of five scores (TRL from the r06 lower bound plus four consensus scores, maximum 15). Robustness analyses around it: Monte Carlo over weights and score perturbations, leave-one-criterion-out, upper-bound TRL rerun, adversarial score changes and a comparison with the ranking implied by r06's TRL alone. Every ranking analysis is run with and without the preprint r50. Inter-rater agreement (weighted Cohen's kappa with a bootstrap interval) is reported for the independent first round.
 - **Inputs:**
-  - `data/trl_from_ref6.csv`: TRL range per domain from r06, Table VI, p. 1213. TRL is not rated by the authors. Score rule: TRL 1-3 gives 0, TRL 4 gives 1, TRL 5-6 gives 2, TRL 7 or higher gives 3. The lower bound is the main result, the upper bound the robustness run.
-  - `data/scores_rater1.csv` and `data/scores_rater2.csv`: columns `domain, criterion, score, sources` (extra columns are ignored), 20 rows each: 5 domains x `Field_demonstrations`, `Incumbent_comparison`, `Independent_replication`, `Commercial_availability`; scores are integers 0-3. Commit these only after both raters have finished, with those four columns only.
+  - `data/trl_from_ref6.csv`: TRL range per domain from r06, Table VI, p. 1213. TRL is not rated by the authors. Score rule: TRL 1-3 gives 0, TRL 4 gives 1, TRL 5-6 gives 2, TRL 7 or higher gives 3.
+  - `data/scores_consensus.csv` (all ranking analyses): columns `domain, technology_scored, criterion, score, score_without_r50, sources, evidence_type, rule_applied, notes`; 20 rows: 5 domains x `Field_demonstrations`, `Incumbent_comparison`, `Independent_groups`, `Commercial_availability`; integer scores 0-3. `score_without_r50` is filled only for cells that depend on r50 (empty means the same as `score`). `technology_scored` must be the same in all rows of a domain.
+  - `data/scores_rater1.csv` and `data/scores_rater2.csv` (agreement statistics only): the independent first round, columns `domain, criterion, score, sources` (extra columns are ignored), 20 rows each, with `Independent_replication` as the third criterion.
+  - Commit the score files only after both raters have finished.
 - **How to run:**
   ```
   "C:\Program Files\MATLAB\R2026a\bin\matlab.exe" -batch "cd('sim2_maturity_mc'); sim2_maturity_mc"

@@ -1,50 +1,53 @@
 function res = sim2_maturity_mc()
-%SIM2_MATURITY_MC Robustness of the maturity ranking of five domains.
-%   Tests whether the ranking depends on the criterion weights, on
-%   single-score disagreements between two raters, or on how the TRL range
-%   of r06 is turned into a score.
+%SIM2_MATURITY_MC Maturity ranking of five domains and its robustness.
+%   PRIMARY ranking: unweighted sum of five scores (maximum 15): the TRL
+%   score from the r06 lower bound plus four agreed (consensus) scores.
+%   ROBUSTNESS analyses around it: Monte Carlo over random weights and
+%   +/-1 score perturbations, leave-one-criterion-out, upper-bound TRL
+%   rerun, adversarial score changes, and comparison with the ranking implied
+%   by r06's TRL ranges (excluding TRL as a criterion; and partly circular,
+%   TRL shared). Every ranking analysis is run twice: with column "score" and
+%   with "score_without_r50" (r50 is a preprint).
 %
 %   Inputs (../data):
-%     scores_rater1.csv, scores_rater2.csv - columns domain, criterion,
-%       score (integer 0-3), sources; other columns are ignored.
-%       20 rows each (5 domains x 4 rated criteria).
+%     scores_consensus.csv - domain, technology_scored, criterion, score,
+%       score_without_r50, sources, evidence_type, rule_applied, notes.
+%       20 rows; scores are integers 0-3; an empty score_without_r50 means
+%       "same as score". Used for ALL ranking analyses.
+%     scores_rater1.csv, scores_rater2.csv - independent first round:
+%       domain, criterion, score, sources. Used ONLY for agreement
+%       statistics. They are never averaged into scores.
 %     trl_from_ref6.csv - TRL range per domain (r06 Table VI, p. 1213).
-%   TRL is not rated. Its score follows from r06:
-%     TRL 1-3 -> 0, TRL 4 -> 1, TRL 5-6 -> 2, TRL >= 7 -> 3.
-%   Main result uses the lower TRL bound, robustness run the upper bound.
-%   TRL is held fixed in the Monte Carlo; only rated scores are perturbed.
-%   Primary probability: P(top, ties), counting every tie for first.
-%   The ranking is compared with r06's TRL ranking twice: from the 4 rated
-%   criteria only (excludes TRL as a criterion) and from all 5 (partly
-%   circular, TRL is shared).
-%   Also reports a bootstrap 95 % interval for kappa and the fewest one-point
-%   score changes that remove the unique first place (equal weights).
+%       TRL is not rated: TRL 1-3 -> 0, 4 -> 1, 5-6 -> 2, >= 7 -> 3.
 %   The script stops on any missing, duplicated or invalid entry; it never
 %   fills in scores.
 %
 %   Output: results.txt, loo_table.tex (this folder),
-%           ../figures/fig_mc_rank.{pdf,png} (main result)
+%           ../figures/fig_mc_rank.{pdf,png} (Monte Carlo, with r50)
 %   res = sim2_maturity_mc() also returns the numeric results.
 %   Base MATLAB only.
 
 here = fileparts(mfilename('fullpath'));
 addpath(fullfile(here, '..', 'common'));
-data_dir  = fullfile(here, '..', 'data');
-trl_file  = fullfile(data_dir, 'trl_from_ref6.csv');
-rater_files = {fullfile(data_dir, 'scores_rater1.csv'), ...
-               fullfile(data_dir, 'scores_rater2.csv')};
+data_dir       = fullfile(here, '..', 'data');
+trl_file       = fullfile(data_dir, 'trl_from_ref6.csv');
+consensus_file = fullfile(data_dir, 'scores_consensus.csv');
+rater_files    = {fullfile(data_dir, 'scores_rater1.csv'), ...
+                  fullfile(data_dir, 'scores_rater2.csv')};
 
 %% Settings
 domains  = {'PNT', 'Geophysics', 'Biomedical', 'RF_Radar_Comms', 'Networked'};
 display_names = {'PNT', 'Geophysics', 'Biomedical', 'RF/Radar/Comms', 'Networked'};
-rated    = {'Field_demonstrations', 'Incumbent_comparison', ...
-            'Independent_replication', 'Commercial_availability'};
-crit_short = {'TRL', 'Field', 'Incumb.', 'Replic.', 'Commerc.'};   % TRL first
-% LaTeX table headers. Independent_replication (CSV name) is displayed as
-% "Independent groups"; stacked so that the table does not get wider.
-crit_table = {'TRL', 'Field', 'Incumb.', '\shortstack{Independent\\groups}', 'Commerc.'};
+% Judged criteria. The third one is named differently in the two inputs.
+rated_first = {'Field_demonstrations', 'Incumbent_comparison', ...
+               'Independent_replication', 'Commercial_availability'};
+rated       = {'Field_demonstrations', 'Incumbent_comparison', ...
+               'Independent_groups', 'Commercial_availability'};
+crit_short  = {'TRL', 'Field', 'Incumb.', 'IndGroups', 'Commerc.'};   % TRL first
+crit_table  = {'TRL', 'Field', 'Incumb.', '\shortstack{Independent\\groups}', ...
+               'Commerc.'};
 nD = numel(domains);
-nC = numel(crit_short);          % TRL + 4 rated criteria
+nC = numel(crit_short);          % TRL + 4 judged criteria
 opt.seed      = 42;
 opt.N         = 10000;           % Monte Carlo iterations
 opt.p_perturb = 0.2;             % probability that a score is changed by +/-1
@@ -53,16 +56,19 @@ opt.score_max = 3;
 opt.boot_B    = 10000;           % bootstrap replicates for kappa
 opt.boot_seed = 42;
 % Perturbation models disagreement between raters, so it applies to the
-% rated criteria (columns 2-5). The TRL column is not rated; its
+% judged criteria (columns 2-5). The TRL column is not rated; its
 % uncertainty is covered by the lower/upper-bound runs.
 opt.perturbed = 2:nC;
 
-%% Input (all problems in all three files are collected, then it stops)
+%% Input (all problems in all four files are collected, then it stops)
 [trl, problems] = read_trl(trl_file, domains, opt.score_min, opt.score_max);
+[cons, p] = read_consensus(consensus_file, domains, rated, ...
+                           opt.score_min, opt.score_max);
+problems = [problems, p];
 R = cell(1, 2);
 no_source = {};
 for k = 1:2
-    [R{k}, p, ns] = read_rater(rater_files{k}, domains, rated, ...
+    [R{k}, p, ns] = read_rater(rater_files{k}, domains, rated_first, ...
                                opt.score_min, opt.score_max);
     problems  = [problems, p];   %#ok<AGROW>
     no_source = [no_source, ns]; %#ok<AGROW>
@@ -75,7 +81,7 @@ if ~isempty(problems)
 end
 R1 = R{1}; R2 = R{2};
 
-%% 1. Inter-rater agreement: the 20 rated pairs only (never TRL)
+%% Inter-rater agreement: first round, the 20 judged pairs only (never TRL)
 r1 = R1(:); r2 = R2(:);
 n_pairs = numel(r1);
 pct_agree = 100*mean(r1 == r2);
@@ -83,68 +89,41 @@ pct_agree = 100*mean(r1 == r2);
 boot = bootstrap_kappa(r1, r2, opt);     % 95 % percentile interval
 if isnan(kappa), boot.ci = [NaN NaN]; end
 [di, ci] = find(abs(R1 - R2) >= 2);
-big = sortrows([di(:), ci(:)]);      % [domain index, rated criterion index]
+big = sortrows([di(:), ci(:)]);      % [domain index, criterion index]
 
-%% 2. Consensus score of the rated criteria
-consensus = (R1 + R2)/2;
-
-%% 3-5. Full analysis, twice
-main  = analyse([trl.score_lower, consensus], opt);    % main result
-upper = analyse([trl.score_upper, consensus], opt);    % robustness
-
-%% 6. Ranking implied by r06's TRL alone (trl_low, ties by trl_high)
+%% Ranking analyses, with and without r50 (consensus scores only)
+% Reference ranking implied by r06's TRL alone (trl_low, ties by trl_high)
 ref_rank = average_rank(100*trl.low + trl.high);
-% Our ranking: order of the median Monte Carlo rank (smaller = better)
-main.med_rank  = average_rank(-main.med);
-upper.med_rank = average_rank(-upper.med);
-rho_main  = spearman(main.med_rank,  ref_rank);    % partly circular
-rho_upper = spearman(upper.med_rank, ref_rank);    % partly circular
+with    = rank_all(trl, cons.score,   ref_rank, opt);
+without = rank_all(trl, cons.without, ref_rank, opt);
 
-% Comparison that excludes TRL as a criterion: the 4 rated criteria only
-opt_rated = opt;
-opt_rated.perturbed = 1:numel(rated);
-rated_only = analyse(consensus, opt_rated);
-rated_only.med_rank = average_rank(-rated_only.med);
-rho_rated = spearman(rated_only.med_rank, ref_rank);
+% Report/table order: primary sum, then Monte Carlo P(top, ties), median
+[~, porder] = sortrows([-with.sum(:), -with.main.p_top(:), with.main.med(:)]);
+% Figure order (Monte Carlo panel): P(top, ties), then median, mean rank
+[~, order] = sortrows([-with.main.p_top(:), with.main.med(:), ...
+                       mean(with.main.ranks, 1).']);
 
-% Adversarial robustness: consensus scores, equal weights, lower TRL bound.
-% Column 1 (TRL) is fixed; columns 2-5 are the judged cells.
-adv = adversarial([trl.score_lower, consensus], 2:nC, opt.score_min, opt.score_max);
-
-% Comparison of the two runs
-lead_main     = leaders(main.p_top);
-lead_upper    = leaders(upper.p_top);
-lead15_main   = leaders(main.p_le15);
-lead15_upper  = leaders(upper.p_le15);
-lead_changed  = ~isequal(lead_main, lead_upper);
-lead15_changed = ~isequal(lead15_main, lead15_upper);
-med_changed   = find(abs(main.med - upper.med) > 1e-9);
-
-% Plot, table and report order: P(top, ties) descending, then median, mean rank
-[~, order] = sortrows([-main.p_top(:), main.med(:), mean(main.ranks, 1).']);
-
-write_loo_table(fullfile(here, 'loo_table.tex'), main.p_top, main.loo, order, ...
+write_loo_table(fullfile(here, 'loo_table.tex'), with, without.sum, porder, ...
                 display_names, crit_table);
 
 %% Results file (also printed to the console)
-fid = fopen(fullfile(here, 'results.txt'), 'w');
+fid = fopen(fullfile(here, 'results.txt'), 'w', 'n', 'UTF-8');
 if fid < 0
     error('sim2:output', 'Cannot write results.txt in %s', here);
 end
 closer = onCleanup(@() fclose(fid));
 
-emit(fid, '===== Sim 2: maturity ranking robustness =====\n');
-emit(fid, 'Inputs: data/scores_rater1.csv, data/scores_rater2.csv, data/trl_from_ref6.csv\n');
-emit(fid, 'Monte Carlo: N = %d, rng(%d) restarted for each run, flat Dirichlet weights\n', ...
-     opt.N, opt.seed);
-emit(fid, 'on %d criteria; each rated consensus score changed by +/-1 with p = %.2f,\n', ...
-     nC, opt.p_perturb);
-emit(fid, 'clipped to [%d,%d].\n', opt.score_min, opt.score_max);
-emit(fid, ['TRL is held fixed in the Monte Carlo: only the %d rated consensus ' ...
-           'scores are\nperturbed. TRL uncertainty is covered by the lower- and ' ...
-           'upper-bound TRL runs.\n'], n_pairs);
+emit(fid, '===== Sim 2: maturity ranking =====\n');
+emit(fid, 'Ranking analyses: data/scores_consensus.csv and data/trl_from_ref6.csv\n');
+emit(fid, ['Agreement statistics only: data/scores_rater1.csv and ' ...
+           'data/scores_rater2.csv (first round)\n']);
+emit(fid, '"with r50" uses column score; "without r50" uses score_without_r50\n');
+emit(fid, '(empty = same as score). r50 is a preprint.\n');
 
-emit(fid, '\n--- 1. Inter-rater agreement (%d rated pairs; TRL excluded) ---\n', n_pairs);
+report_primary(fid, with, without, cons, domains, rated, crit_short, porder);
+
+emit(fid, ['\n--- Inter-rater agreement (independent first round, %d judged ' ...
+           'pairs; TRL excluded) ---\n'], n_pairs);
 emit(fid, 'Exact agreement: %.1f %% (%d of %d)\n', pct_agree, sum(r1 == r2), n_pairs);
 if isnan(kappa)
     emit(fid, 'Quadratic-weighted Cohen''s kappa: undefined (no expected disagreement)\n');
@@ -163,77 +142,55 @@ emit(fid, 'Pairs differing by 2 or more points: %d\n', size(big, 1));
 for k = 1:size(big, 1)
     i = big(k, 1); j = big(k, 2);
     emit(fid, '  %-16s %-24s rater1 = %d, rater2 = %d\n', ...
-         domains{i}, rated{j}, R1(i, j), R2(i, j));
+         domains{i}, rated_first{j}, R1(i, j), R2(i, j));
 end
-emit(fid, 'Rows with an empty "sources" field: %d\n', numel(no_source));
+emit(fid, 'Rater rows with an empty "sources" field: %d\n', numel(no_source));
 for k = 1:numel(no_source)
     emit(fid, '  %s\n', no_source{k});
 end
 
-emit(fid, '\n--- 2. Scores ---\n');
-emit(fid, 'TRL from r06 Table VI and the resulting score:\n');
+emit(fid, '\n--- TRL inputs (r06 Table VI) ---\n');
 emit(fid, '%-16s %8s %9s %12s %12s\n', 'domain', 'trl_low', 'trl_high', ...
      'score_lower', 'score_upper');
-for i = 1:nD
+for i = porder.'
     emit(fid, '%-16s %8d %9d %12d %12d\n', domains{i}, trl.low(i), trl.high(i), ...
          trl.score_lower(i), trl.score_upper(i));
 end
-emit(fid, 'Consensus of the rated criteria (mean of the two raters):\n');
-emit(fid, '%-16s%s\n', 'domain', sprintf(' %9s', crit_short{2:end}));
-for i = 1:nD
-    emit(fid, '%-16s%s\n', domains{i}, sprintf(' %9.1f', consensus(i, :)));
-end
 
-report_run(fid, 'MAIN RESULT (TRL = lower-bound rule)', main, order, domains, crit_short);
-report_run(fid, 'ROBUSTNESS (TRL = upper-bound rule)', upper, order, domains, crit_short);
+emit(fid, '\n=== ROBUSTNESS ANALYSES AROUND THE PRIMARY RANKING ===\n');
+emit(fid, ['Monte Carlo: N = %d, rng(%d) restarted for each run, flat Dirichlet ' ...
+           'weights;\neach judged consensus score changed by +/-1 with p = %.2f, ' ...
+           'clipped to [%d,%d].\n'], opt.N, opt.seed, opt.p_perturb, ...
+     opt.score_min, opt.score_max);
+emit(fid, ['TRL is held fixed in the Monte Carlo: only the %d judged consensus ' ...
+           'scores are\nperturbed. TRL uncertainty is covered by the lower- and ' ...
+           'upper-bound TRL runs.\n'], n_pairs);
 
-emit(fid, '\n--- Main versus robustness ---\n');
-emit(fid, 'Highest P(top, ties) [primary]:   main %s | upper %s | changes: %s\n', ...
-     name_list(domains, lead_main), name_list(domains, lead_upper), yesno(lead_changed));
-emit(fid, 'Highest P(rank<=1.5) [secondary]: main %s | upper %s | changes: %s\n', ...
-     name_list(domains, lead15_main), name_list(domains, lead15_upper), ...
-     yesno(lead15_changed));
-emit(fid, 'Median ranks change: %s\n', yesno(~isempty(med_changed)));
-for i = med_changed(:).'
-    emit(fid, '  %-16s main %.2f -> upper %.2f\n', domains{i}, main.med(i), upper.med(i));
-end
+report_mc(fid, 'R1. Robustness: Monte Carlo (lower-bound TRL)', ...
+          with.main, without.main, domains, porder);
+report_loo(fid, 'R2. Robustness: leave-one-criterion-out (lower-bound TRL)', ...
+           with.main, without.main, domains, porder, crit_short);
+report_mc(fid, 'R3. Robustness: upper-bound TRL rerun, Monte Carlo', ...
+          with.upper, without.upper, domains, porder);
+report_loo(fid, 'R3. Robustness: upper-bound TRL rerun, leave-one-criterion-out', ...
+           with.upper, without.upper, domains, porder, crit_short);
+report_bounds(fid, 'with r50', with, domains);
+report_bounds(fid, 'without r50', without, domains);
 
-emit(fid, '\n--- 6. Comparison with the ranking implied by r06 TRL alone ---\n');
-emit(fid, 'r06 ranking: by trl_low, ties broken by trl_high; remaining ties averaged.\n');
-emit(fid, 'This work: domains ranked by median Monte Carlo rank; ties averaged.\n');
-emit(fid, 'Only %d domains are compared.\n', nD);
+emit(fid, '\n--- R4. Robustness: adversarial test ---\n');
+emit(fid, ['Starts from the primary ranking (lower-bound TRL). One change moves one ' ...
+           'judged\nconsensus score up or down by 1 within 0-3 (a cell may be moved ' ...
+           'more than once,\neach step counted); TRL is fixed; a tie for first ' ...
+           'counts as losing.\n']);
+report_adversarial(fid, 'with r50', with.adv, domains, [{'TRL'}, rated]);
+report_adversarial(fid, 'without r50', without.adv, domains, [{'TRL'}, rated]);
 
-emit(fid, '\n6a. Comparison that excludes TRL as a criterion (4 rated criteria only)\n');
-emit(fid, ['Same Monte Carlo (N = %d, rng(%d), flat Dirichlet on 4 weights, same ' ...
-           'perturbation rule).\n'], opt.N, opt.seed);
-emit(fid, '%-16s %9s %12s %7s %6s %6s %10s\n', 'domain', 'r06 rank', ...
-     'P(top, ties)', 'median', 'p05', 'p95', 'this rank');
-for i = order.'
-    emit(fid, '%-16s %9.1f %12.4f %7.2f %6.2f %6.2f %10.1f\n', domains{i}, ...
-         ref_rank(i), rated_only.p_top(i), rated_only.med(i), rated_only.p05(i), ...
-         rated_only.p95(i), rated_only.med_rank(i));
-end
-emit(fid, 'Spearman rank correlation with r06, excludes TRL as a criterion: %s\n', ...
-     rho_text(rho_rated));
-emit(fid, ['This comparison is computed identically for both TRL bounds, so there ' ...
-           'is a\nsingle value.\n']);
-
-emit(fid, '\n6b. PARTLY CIRCULAR (TRL is shared): all 5 criteria\n');
-emit(fid, '%-16s %9s %12s %12s %13s %13s\n', 'domain', 'r06 rank', ...
-     'lower median', 'lower rank', 'upper median', 'upper rank');
-for i = order.'
-    emit(fid, '%-16s %9.1f %12.2f %12.1f %13.2f %13.1f\n', domains{i}, ref_rank(i), ...
-         main.med(i), main.med_rank(i), upper.med(i), upper.med_rank(i));
-end
-emit(fid, 'Spearman rank correlation with r06, partly circular, lower bound: %s\n', ...
-     rho_text(rho_main));
-emit(fid, 'Spearman rank correlation with r06, partly circular, upper bound: %s\n', ...
-     rho_text(rho_upper));
-
-report_adversarial(fid, adv, domains, [{'TRL'}, rated]);
+report_r06(fid, with, without, ref_rank, domains, porder, opt);
+report_r50_effect(fid, with, without);
 clear closer
 
-%% Figure (main result)
+%% Figure: Monte Carlo robustness analysis (lower-bound TRL, with r50)
+main = with.main;
 fig = figure('Units', 'inches', 'Position', [1 1 3.5 2.2]);
 axL = axes(fig, 'Units', 'inches', 'Position', [0.90 0.40 1.07 1.72]);
 axR = axes(fig, 'Units', 'inches', 'Position', [2.20 0.40 1.19 1.72]);
@@ -265,23 +222,50 @@ ieee_style(fig);
 save_ieee(fig, 'fig_mc_rank');
 
 res = struct('pct_agree', pct_agree, 'kappa', kappa, 'confusion', confusion, ...
-             'big_diff', big, 'consensus', consensus, 'trl', trl, ...
-             'main', main, 'upper', upper, 'ref_rank', ref_rank, ...
-             'rho_main', rho_main, 'rho_upper', rho_upper, ...
-             'rated_only', rated_only, 'rho_rated', rho_rated, ...
-             'kappa_ci', boot.ci, 'boot_undefined', boot.n_undefined, ...
-             'adversarial', adv, ...
-             'lead_changed', lead_changed, 'median_changed', med_changed, ...
-             'no_source', {no_source}, 'order', order);
+             'big_diff', big, 'kappa_ci', boot.ci, ...
+             'boot_undefined', boot.n_undefined, 'trl', trl, ...
+             'consensus', cons, 'with', with, 'without', without, ...
+             'ref_rank', ref_rank, 'primary_order', porder, 'order', order, ...
+             'no_source', {no_source});
 if nargout == 0
     clear res
 end
 end
 
 %% --------------------------------------------------------------------- analysis
+function b = rank_all(trl, C, ref_rank, opt)
+% Every ranking analysis for one set of judged scores C (domains x 4).
+S_low = [trl.score_lower, C];
+S_up  = [trl.score_upper, C];
+nC = size(S_low, 2);
+
+% Primary ranking
+b.scores = S_low;
+b.sum    = sum(S_low, 2).';
+b.rank   = average_rank(b.sum);
+
+% Monte Carlo and leave-one-out, lower and upper TRL bound
+b.main  = analyse(S_low, opt);
+b.upper = analyse(S_up, opt);
+
+% Comparison with r06: rank by median Monte Carlo rank (smaller = better)
+b.main.med_rank  = average_rank(-b.main.med);
+b.upper.med_rank = average_rank(-b.upper.med);
+opt_rated = opt;
+opt_rated.perturbed = 1:size(C, 2);
+b.rated_only = analyse(C, opt_rated);            % excludes TRL as a criterion
+b.rated_only.med_rank = average_rank(-b.rated_only.med);
+b.rho_rated = spearman(b.rated_only.med_rank, ref_rank);
+b.rho_main  = spearman(b.main.med_rank,  ref_rank);    % partly circular
+b.rho_upper = spearman(b.upper.med_rank, ref_rank);    % partly circular
+
+% Adversarial test from the primary ranking
+b.adv = adversarial(S_low, 2:nC, opt.score_min, opt.score_max);
+end
+
 function a = analyse(S, opt)
 % Monte Carlo and leave-one-criterion-out for one score matrix S
-% (domains x criteria). The generator is restarted so that both runs use the
+% (domains x criteria). The generator is restarted so that all runs use the
 % same weights and perturbations.
 [nD, nC] = size(S);
 cols = opt.perturbed;
@@ -385,10 +369,10 @@ end
 end
 
 function a = adversarial(S, judged, lo, hi)
-% Fewest one-point changes to judged cells after which the top domain (equal
-% weights, sum of scores) is no longer uniquely first. A tie counts as losing.
-% One change moves one cell by +1 or -1 and stays within [lo, hi]; a cell may
-% be moved more than once, each step counted.
+% Fewest one-point changes to judged cells after which the top domain (sum of
+% scores) is no longer uniquely first. A tie counts as losing. One change
+% moves one cell by +1 or -1 and stays within [lo, hi]; a cell may be moved
+% more than once, each step counted.
 %
 % Each change alters the margin (leader - challenger) by at most 1, so
 % challenger j needs at least ceil(margin) changes: lowering the leader or
@@ -516,6 +500,91 @@ function s = trl_score(t)
 s = (t >= 4) + (t >= 5) + (t >= 7);
 end
 
+function [c, problems] = read_consensus(file, domains, criteria, lo, hi)
+% Agreed scores. c.score and c.without are domains x criteria;
+% c.technology holds one technology_scored text per domain.
+needed = {'domain', 'technology_scored', 'criterion', 'score', ...
+          'score_without_r50', 'sources', 'evidence_type', 'rule_applied', 'notes'};
+nD = numel(domains); nC = numel(criteria);
+c.score   = nan(nD, nC);
+c.without = nan(nD, nC);
+c.technology = repmat({''}, nD, 1);
+c.r50_notes = {};              % possible inconsistencies, reported only
+c.no_source = {};
+[rows, problems, tag] = read_table(file, needed);
+if ~isempty(problems), return; end
+count = zeros(nD, nC);
+for r = 1:size(rows, 1)
+    dom  = cell_text(rows{r, 2});
+    tech = cell_text(rows{r, 3});
+    cri  = cell_text(rows{r, 4});
+    where = sprintf('%s data row %d (%s / %s)', tag, rows{r, 1}, dom, cri);
+    i = find(strcmp(domains, dom));
+    j = find(strcmp(criteria, cri));
+    if isempty(i)
+        problems{end+1} = sprintf('%s: unknown domain "%s"', where, dom); %#ok<AGROW>
+    end
+    if strcmp(cri, 'TRL')
+        problems{end+1} = sprintf(['%s: TRL must not be rated (it is taken from ' ...
+                                   'trl_from_ref6.csv)'], where); %#ok<AGROW>
+    elseif isempty(j)
+        problems{end+1} = sprintf('%s: unknown criterion "%s"', where, cri); %#ok<AGROW>
+    end
+    [v, msg] = check_integer(rows{r, 5}, lo, hi);
+    if ~isempty(msg)
+        problems{end+1} = sprintf('%s: score %s', where, msg); %#ok<AGROW>
+    end
+    alt_text = cell_text(rows{r, 6});
+    if isempty(alt_text)
+        alt = v;                                   % same as score
+    else
+        [alt, msg] = check_integer(rows{r, 6}, lo, hi);
+        if ~isempty(msg)
+            problems{end+1} = sprintf('%s: score_without_r50 %s', where, msg); %#ok<AGROW>
+        end
+    end
+    if isempty(tech)
+        problems{end+1} = sprintf('%s: technology_scored is empty', where); %#ok<AGROW>
+    elseif ~isempty(i)
+        if isempty(c.technology{i})
+            c.technology{i} = tech;
+        elseif ~strcmp(c.technology{i}, tech)
+            problems{end+1} = sprintf(['%s: technology_scored "%s" differs from "%s" ' ...
+                'in an earlier row of this domain'], where, tech, ...
+                c.technology{i}); %#ok<AGROW>
+        end
+    end
+    if ~isempty(i) && ~isempty(j)
+        count(i, j) = count(i, j) + 1;
+        c.score(i, j) = v;
+        c.without(i, j) = alt;
+        src = cell_text(rows{r, 7});
+        cites = ~isempty(regexpi(src, 'r50(?!\d)', 'once'));
+        if isempty(src)
+            c.no_source{end+1} = sprintf('%s / %s', dom, cri); %#ok<AGROW>
+        end
+        if cites && isempty(alt_text)
+            c.r50_notes{end+1} = sprintf(['%s / %s: sources cite r50 but ' ...
+                'score_without_r50 is empty (treated as unchanged)'], dom, cri); %#ok<AGROW>
+        elseif ~cites && ~isempty(alt_text)
+            c.r50_notes{end+1} = sprintf(['%s / %s: score_without_r50 is filled but ' ...
+                'sources do not cite r50'], dom, cri); %#ok<AGROW>
+        end
+    end
+end
+for i = 1:nD
+    for j = 1:nC
+        if count(i, j) == 0
+            problems{end+1} = sprintf('%s: missing row: %s / %s', ...
+                                      tag, domains{i}, criteria{j}); %#ok<AGROW>
+        elseif count(i, j) > 1
+            problems{end+1} = sprintf('%s: duplicated row (%d times): %s / %s', ...
+                tag, count(i, j), domains{i}, criteria{j}); %#ok<AGROW>
+        end
+    end
+end
+end
+
 function [S, problems, no_source] = read_rater(file, domains, criteria, lo, hi)
 needed = {'domain', 'criterion', 'score', 'sources'};
 nD = numel(domains); nC = numel(criteria);
@@ -574,7 +643,7 @@ if ~isfile(file)
     problems = {sprintf('%s: file not found (%s)', tag, file)};
     return;
 end
-C = readcell(file, 'FileType', 'text', 'Delimiter', ',');
+C = readcell(file, 'FileType', 'text', 'Delimiter', ',', 'Encoding', 'UTF-8');
 header = cellfun(@cell_text, C(1, :), 'UniformOutput', false);
 header = strrep(header, char(65279), '');            % byte-order mark
 col = zeros(1, numel(needed));
@@ -628,59 +697,112 @@ x = num;
 end
 
 %% --------------------------------------------------------------------- output
-function report_run(fid, heading, a, order, domains, crit_short)
-emit(fid, '\n=== %s ===\n', heading);
-emit(fid, '--- Monte Carlo rank statistics (1 = most mature) ---\n');
-emit(fid, '%-16s %12s %7s %6s %6s | %12s %10s\n', 'domain', 'P(top, ties)', ...
-     'median', 'p05', 'p95', 'P(rank<=1.5)', 'P(rank=1)');
-for i = order.'
-    emit(fid, '%-16s %12.4f %7.2f %6.2f %6.2f | %12.4f %10.4f\n', domains{i}, ...
-         a.p_top(i), a.med(i), a.p05(i), a.p95(i), a.p_le15(i), a.p_first(i));
+function report_primary(fid, w, wo, cons, domains, rated, crit_short, porder)
+emit(fid, ['\n--- PRIMARY RANKING: unweighted sum of five scores (maximum 15) ' ...
+           '---\n']);
+emit(fid, ['TRL score from the r06 lower bound + four consensus scores. ' ...
+           'Rank 1 = most mature;\ntied domains share the average rank.\n']);
+width = max([cellfun(@numel, cons.technology); numel('technology_scored')]);
+emit(fid, '%-16s %-*s | %8s %6s | %11s %9s\n', 'domain', width, 'technology_scored', ...
+     'sum', 'rank', 'sum w/o r50', 'rank w/o');
+for i = porder.'
+    emit(fid, '%-16s %-*s | %8d %6.1f | %11d %9.1f\n', domains{i}, width, ...
+         cons.technology{i}, w.sum(i), w.rank(i), wo.sum(i), wo.rank(i));
 end
-emit(fid, 'First place tied (share of iterations): %.4f\n', a.tie_share);
-emit(fid, ['PRIMARY: P(top, ties) counts every tie for first, so the column can ' ...
-           'sum to more than 1.\n']);
-emit(fid, ['SECONDARY (right of |): P(rank<=1.5) counts first alone or a two-way ' ...
-           'tie;\nP(rank=1) counts first alone.\n']);
-emit(fid, '--- Leave-one-criterion-out ranks (equal weights, no perturbation) ---\n');
-emit(fid, '%-16s%s\n', 'left out ->', sprintf(' %9s', crit_short{:}));
-for i = 1:numel(domains)
-    emit(fid, '%-16s%s\n', domains{i}, sprintf(' %9.1f', a.loo(i, :)));
+emit(fid, '\nScores summed (with r50 | without r50):\n');
+emit(fid, '%-16s%s |%s\n', 'domain', sprintf(' %9s', crit_short{:}), ...
+     sprintf(' %9s', crit_short{:}));
+for i = porder.'
+    emit(fid, '%-16s%s |%s\n', domains{i}, sprintf(' %9d', w.scores(i, :)), ...
+         sprintf(' %9d', wo.scores(i, :)));
+end
+[di, ci] = find(cons.score ~= cons.without);
+cells = sortrows([di(:), ci(:)]);
+emit(fid, 'Cells whose score changes without r50: %d\n', size(cells, 1));
+for k = 1:size(cells, 1)
+    i = cells(k, 1); j = cells(k, 2);
+    emit(fid, '  %-16s %-24s %d -> %d\n', domains{i}, rated{j}, ...
+         cons.score(i, j), cons.without(i, j));
+end
+emit(fid, 'Possible r50 inconsistencies in the consensus file: %d\n', ...
+     numel(cons.r50_notes));
+for k = 1:numel(cons.r50_notes)
+    emit(fid, '  %s\n', cons.r50_notes{k});
+end
+emit(fid, 'Consensus rows with an empty "sources" field: %d\n', numel(cons.no_source));
+for k = 1:numel(cons.no_source)
+    emit(fid, '  %s\n', cons.no_source{k});
 end
 end
 
-function report_adversarial(fid, a, domains, criteria)
-emit(fid, '\n--- 7. Adversarial robustness ---\n');
-emit(fid, ['Baseline ranking used here: the unweighted sum of five scores per ' ...
-           'domain (maximum 15):\nthe four consensus scores plus the TRL score ' ...
-           'from r06 (lower bound; not a rater consensus).\n']);
-emit(fid, ['The other analyses in this file do not use this baseline: the Monte ' ...
-           'Carlo draws random\nweights and perturbs scores, the r06 comparisons ' ...
-           'rank by median Monte Carlo rank, and\nleave-one-out uses equal ' ...
-           'weights on four criteria.\n']);
-[~, order] = sort(a.totals, 'descend');
-ranks = average_rank(a.totals);
-emit(fid, '%-16s %12s %6s\n', 'domain', 'sum (of 15)', 'rank');
-for i = order.'
-    emit(fid, '%-16s %12.1f %6.1f\n', domains{i}, a.totals(i), ranks(i));
+function report_mc(fid, heading, w, wo, domains, porder)
+emit(fid, '\n--- %s ---\n', heading);
+emit(fid, '%-16s | %-34s | %-34s\n', '', 'with r50', 'without r50');
+head = sprintf('%12s %7s %6s %6s', 'P(top, ties)', 'median', 'p05', 'p95');
+emit(fid, '%-16s | %-34s | %-34s\n', 'domain', head, head);
+for i = porder.'
+    emit(fid, '%-16s | %12.4f %7.2f %6.2f %6.2f    | %12.4f %7.2f %6.2f %6.2f\n', ...
+         domains{i}, w.p_top(i), w.med(i), w.p05(i), w.p95(i), ...
+         wo.p_top(i), wo.med(i), wo.p05(i), wo.p95(i));
 end
+emit(fid, 'P(top, ties) counts every tie for first, so a column can sum to more than 1.\n');
+emit(fid, 'Secondary:\n');
+head = sprintf('%12s %10s', 'P(rank<=1.5)', 'P(rank=1)');
+emit(fid, '%-16s | %-34s | %-34s\n', 'domain', head, head);
+for i = porder.'
+    emit(fid, '%-16s | %12.4f %10.4f            | %12.4f %10.4f\n', domains{i}, ...
+         w.p_le15(i), w.p_first(i), wo.p_le15(i), wo.p_first(i));
+end
+emit(fid, 'First place tied (share of iterations): with r50 %.4f | without r50 %.4f\n', ...
+     w.tie_share, wo.tie_share);
+end
+
+function report_loo(fid, heading, w, wo, domains, porder, crit_short)
+emit(fid, '\n--- %s ---\n', heading);
+emit(fid, 'Rank with one criterion left out (equal weights, no perturbation)\n');
+emit(fid, '%-16s | %-50s| %s\n', '', 'with r50', 'without r50');
+emit(fid, '%-16s |%s |%s\n', 'left out ->', sprintf(' %9s', crit_short{:}), ...
+     sprintf(' %9s', crit_short{:}));
+for i = porder.'
+    emit(fid, '%-16s |%s |%s\n', domains{i}, sprintf(' %9.1f', w.loo(i, :)), ...
+         sprintf(' %9.1f', wo.loo(i, :)));
+end
+end
+
+function report_bounds(fid, label, b, domains)
+% What changes between the lower- and upper-bound TRL runs
+emit(fid, '\nLower versus upper TRL bound (%s):\n', label);
+a = leaders(b.main.p_top); u = leaders(b.upper.p_top);
+emit(fid, '  Highest P(top, ties):  lower %s | upper %s | changes: %s\n', ...
+     name_list(domains, a), name_list(domains, u), yesno(~isequal(a, u)));
+a = leaders(b.main.p_le15); u = leaders(b.upper.p_le15);
+emit(fid, '  Highest P(rank<=1.5) [secondary]:  lower %s | upper %s | changes: %s\n', ...
+     name_list(domains, a), name_list(domains, u), yesno(~isequal(a, u)));
+moved = find(abs(b.main.med - b.upper.med) > 1e-9);
+emit(fid, '  Median ranks change: %s\n', yesno(~isempty(moved)));
+for i = moved(:).'
+    emit(fid, '    %-16s lower %.2f -> upper %.2f\n', domains{i}, b.main.med(i), ...
+         b.upper.med(i));
+end
+end
+
+function report_adversarial(fid, label, a, domains, criteria)
+emit(fid, '\n[%s]\n', label);
 if a.tied
-    emit(fid, 'RESULT: %d domains already tie for first: %s\n', numel(a.leaders), ...
-         strjoin(domains(a.leaders), ', '));
+    emit(fid, 'RESULT (%s): %d domains already tie for first: %s\n', label, ...
+         numel(a.leaders), strjoin(domains(a.leaders), ', '));
     emit(fid, 'No domain is uniquely first, so no minimum number of changes applies.\n');
     return;
 end
 L = a.leaders;
 if isnan(a.n_min)
-    emit(fid, 'RESULT: %s stays uniquely first for any changes within 0-3.\n', domains{L});
+    emit(fid, 'RESULT (%s): %s stays uniquely first for any changes within 0-3.\n', ...
+         label, domains{L});
     return;
 end
-emit(fid, ['Rule: one change moves one judged consensus score up or down by 1 within ' ...
-           '0-3 (a cell\nmay be moved more than once, each step counted); TRL is ' ...
-           'fixed; a tie for first counts\nas losing.\n']);
-emit(fid, 'Top-ranked domain: %s (sum %.1f)\n', domains{L}, a.totals(L));
-emit(fid, ['RESULT: minimum number of one-point changes for %s to stop being ' ...
-           'uniquely first: %d\n'], domains{L}, a.n_min);
+emit(fid, 'Top-ranked domain: %s (sum %d)\n', domains{L}, a.totals(L));
+emit(fid, ['RESULT (%s): minimum number of one-point changes for %s to stop being ' ...
+           'uniquely first: %d\n'], label, domains{L}, a.n_min);
 emit(fid, 'Domain(s) that can tie or overtake it with that number: %s\n', ...
      strjoin(domains(a.challengers), ', '));
 emit(fid, 'One minimal set of changes:\n');
@@ -688,15 +810,77 @@ cells = unique(a.changes(:, 1:2), 'rows', 'stable');
 for k = 1:size(cells, 1)
     i = cells(k, 1); c = cells(k, 2);
     step = sum(a.changes(a.changes(:, 1) == i & a.changes(:, 2) == c, 3));
-    emit(fid, '  %-16s %-24s %.1f -> %.1f\n', domains{i}, criteria{c}, ...
+    emit(fid, '  %-16s %-24s %d -> %d\n', domains{i}, criteria{c}, ...
          a.scores(i, c), a.scores(i, c) + step);
 end
 emit(fid, 'This set moves each cell at most once: %s\n', yesno(a.distinct));
 emit(fid, 'Sums after these changes:');
+[~, order] = sort(a.totals, 'descend');
 for i = order.'
-    emit(fid, ' %s %.1f;', domains{i}, a.new_totals(i));
+    emit(fid, ' %s %d;', domains{i}, a.new_totals(i));
 end
 emit(fid, '\n');
+end
+
+function report_r06(fid, w, wo, ref_rank, domains, porder, opt)
+emit(fid, ['\n--- R5. Robustness: comparison with the ranking implied by r06 TRL ' ...
+           'alone ---\n']);
+emit(fid, 'r06 ranking: by trl_low, ties broken by trl_high; remaining ties averaged.\n');
+emit(fid, 'This work: domains ranked by median Monte Carlo rank; ties averaged.\n');
+emit(fid, 'Only %d domains are compared.\n', numel(domains));
+
+emit(fid, '\nR5a. Comparison that excludes TRL as a criterion (4 judged criteria only)\n');
+emit(fid, ['Same Monte Carlo (N = %d, rng(%d), flat Dirichlet on 4 weights, same ' ...
+           'perturbation rule).\n'], opt.N, opt.seed);
+emit(fid, '%-16s %9s | %-18s | %-18s\n', '', '', 'with r50', 'without r50');
+emit(fid, '%-16s %9s | %8s %9s | %8s %9s\n', 'domain', 'r06 rank', 'median', ...
+     'this rank', 'median', 'this rank');
+for i = porder.'
+    emit(fid, '%-16s %9.1f | %8.2f %9.1f | %8.2f %9.1f\n', domains{i}, ref_rank(i), ...
+         w.rated_only.med(i), w.rated_only.med_rank(i), ...
+         wo.rated_only.med(i), wo.rated_only.med_rank(i));
+end
+emit(fid, 'Spearman rank correlation with r06, excludes TRL as a criterion:\n');
+emit(fid, '  with r50:    %s\n  without r50: %s\n', rho_text(w.rho_rated), ...
+     rho_text(wo.rho_rated));
+emit(fid, ['This comparison is computed identically for both TRL bounds, so there ' ...
+           'is one value\nfor each score set.\n']);
+
+emit(fid, '\nR5b. PARTLY CIRCULAR (TRL is shared): all 5 criteria\n');
+emit(fid, '%-16s %9s | %-29s | %-29s\n', '', '', 'with r50', 'without r50');
+head = sprintf('%6s %7s %6s %7s', 'lo med', 'lo rank', 'up med', 'up rank');
+emit(fid, '%-16s %9s | %-29s | %-29s\n', 'domain', 'r06 rank', head, head);
+for i = porder.'
+    emit(fid, '%-16s %9.1f | %6.2f %7.1f %6.2f %7.1f | %6.2f %7.1f %6.2f %7.1f\n', ...
+         domains{i}, ref_rank(i), ...
+         w.main.med(i), w.main.med_rank(i), w.upper.med(i), w.upper.med_rank(i), ...
+         wo.main.med(i), wo.main.med_rank(i), wo.upper.med(i), wo.upper.med_rank(i));
+end
+emit(fid, 'Spearman rank correlation with r06, partly circular:\n');
+emit(fid, '  lower bound: with r50 %s | without r50 %s\n', rho_text(w.rho_main), ...
+     rho_text(wo.rho_main));
+emit(fid, '  upper bound: with r50 %s | without r50 %s\n', rho_text(w.rho_upper), ...
+     rho_text(wo.rho_upper));
+end
+
+function report_r50_effect(fid, w, wo)
+differs = @(a, b) yesno(~isequaln(a, b));
+emit(fid, '\n--- Effect of removing r50: does anything change? ---\n');
+emit(fid, 'Primary sums:                        %s\n', differs(w.sum, wo.sum));
+emit(fid, 'Primary ranks:                       %s\n', differs(w.rank, wo.rank));
+emit(fid, 'Highest P(top, ties), lower bound:   %s\n', ...
+     differs(leaders(w.main.p_top), leaders(wo.main.p_top)));
+emit(fid, 'Highest P(top, ties), upper bound:   %s\n', ...
+     differs(leaders(w.upper.p_top), leaders(wo.upper.p_top)));
+emit(fid, 'Median ranks, lower bound:           %s\n', differs(w.main.med, wo.main.med));
+emit(fid, 'Median ranks, upper bound:           %s\n', differs(w.upper.med, wo.upper.med));
+emit(fid, 'Leave-one-out ranks, lower bound:    %s\n', differs(w.main.loo, wo.main.loo));
+emit(fid, 'Leave-one-out ranks, upper bound:    %s\n', differs(w.upper.loo, wo.upper.loo));
+emit(fid, 'Adversarial result (leader, number): %s\n', ...
+     differs({w.adv.leaders, w.adv.n_min}, {wo.adv.leaders, wo.adv.n_min}));
+emit(fid, 'Spearman values (all three):         %s\n', ...
+     differs(round([w.rho_rated, w.rho_main, w.rho_upper], 10), ...
+             round([wo.rho_rated, wo.rho_main, wo.rho_upper], 10)));
 end
 
 function s = name_list(domains, idx)
@@ -715,34 +899,41 @@ else
 end
 end
 
-function write_loo_table(file, p_top, loo, order, names, crit_short)
-% First data column: P(top, ties) from the main Monte Carlo run (primary);
-% remaining columns: leave-one-criterion-out ranks. Rows in figure order.
+function write_loo_table(file, w, sum_without, order, names, crit_table)
+% Primary ranking first (sum, rank, sum without the preprint), then the
+% robustness columns: P(top, ties) and leave-one-criterion-out ranks
+% (lower-bound TRL, with all sources). Rows in primary order.
 fid = fopen(file, 'w');
 if fid < 0
     error('sim2:output', 'Cannot write %s', file);
 end
 closer = onCleanup(@() fclose(fid));
-nC = numel(crit_short);
+nC = numel(crit_table);
 fprintf(fid, '\\begin{table}[!t]\n');
 fprintf(fid, '\\renewcommand{\\arraystretch}{1.3}\n');
 fprintf(fid, '\\setlength{\\tabcolsep}{3pt}\n');
-fprintf(fid, ['\\caption{Probability of Ranking First, Counting All Ties ' ...
-              '(Monte Carlo), and Domain Rank With One Criterion Left Out ' ...
-              '(Equal Weights on the Other Four; 1 = Most Mature). ' ...
-              'Lower-Bound TRL Rule}\n']);
+fprintf(fid, ['\\caption{Primary Ranking by the Unweighted Sum of Five Scores ' ...
+              '(Maximum 15; 1 = Most Mature), Also Without the Preprint ' ...
+              '\\cite{r50_Muradoglu2025}, and Robustness Analyses: Monte Carlo ' ...
+              'Probability of Ranking First (All Ties Counted) and Rank With One ' ...
+              'Criterion Left Out. Lower-Bound TRL Rule}\n']);
 fprintf(fid, '\\label{tab:loo}\n');
 fprintf(fid, '\\centering\n');
 fprintf(fid, '\\footnotesize\n');
-fprintf(fid, '\\begin{tabular}{|l|c|%s}\n', repmat('c|', 1, nC));
+fprintf(fid, '\\begin{tabular}{|l|c|c|c|c|%s}\n', repmat('c|', 1, nC));
 fprintf(fid, '\\hline\n');
-fprintf(fid, ' & & \\multicolumn{%d}{c|}{Rank with criterion left out} \\\\\n', nC);
-fprintf(fid, '\\cline{3-%d}\n', nC + 2);
-fprintf(fid, 'Domain & $P_{\\mathrm{top}}$%s \\\\\n', sprintf(' & %s', crit_short{:}));
+fprintf(fid, [' & \\multicolumn{3}{c|}{Primary ranking} & ' ...
+              '\\multicolumn{%d}{c|}{Robustness} \\\\\n'], nC + 1);
+fprintf(fid, '\\cline{2-%d}\n', nC + 5);
+fprintf(fid, ' & & & & & \\multicolumn{%d}{c|}{Rank with criterion left out} \\\\\n', nC);
+fprintf(fid, '\\cline{6-%d}\n', nC + 5);
+fprintf(fid, ['Domain & Sum & Rank & \\shortstack{Sum w/o\\\\preprint} & ' ...
+              '$P_{\\mathrm{top}}$%s \\\\\n'], sprintf(' & %s', crit_table{:}));
 fprintf(fid, '\\hline\n');
 for i = order(:).'
-    fprintf(fid, '%s & %.3f%s \\\\\n', names{i}, p_top(i), ...
-            sprintf(' & %g', loo(i, :)));
+    fprintf(fid, '%s & %d & %g & %d & %.3f%s \\\\\n', names{i}, w.sum(i), ...
+            w.rank(i), sum_without(i), w.main.p_top(i), ...
+            sprintf(' & %g', w.main.loo(i, :)));
     fprintf(fid, '\\hline\n');
 end
 fprintf(fid, '\\end{tabular}\n');
