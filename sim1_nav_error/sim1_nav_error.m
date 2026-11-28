@@ -1,3 +1,7 @@
+% SUPERSEDED by sim1_nav_error.py, which combines the accelerometer and
+% gyroscope terms as a root sum of squares and is the version used in the
+% paper. This MATLAB file is kept for reference.
+
 %% sim1_nav_error.m
 % Illustrative single-axis inertial-navigation error budget.
 % Analytic model (r43 Eq. (31), after Titterton and Weston):
