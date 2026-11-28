@@ -1,3 +1,8 @@
+% NOTE: the paper's Monte Carlo results (strictly-first probabilities,
+% p = 0.20 and 0.45, one-directional variant, per-rater rankings, strict R4)
+% come from sim2_robustness.py. The minimum-change result in results.txt,
+% produced by this file, is still used.
+
 function res = sim2_maturity_mc()
 %SIM2_MATURITY_MC Maturity ranking of five domains and its robustness.
 %   PRIMARY ranking: unweighted sum of five scores (maximum 15): the TRL

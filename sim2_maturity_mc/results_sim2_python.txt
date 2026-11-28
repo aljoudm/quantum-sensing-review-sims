@@ -1,0 +1,47 @@
+Equal-weight sums: {'Geophysics': 11, 'Biomedicine': 8, 'PNT': 8, 'RF': 4, 'Networked': 1}
+
+Weights only (no score changes)
+  Geophysics   P(strictly first) 1.000  P(tied first) 0.000  median 1.00 [1.0, 1.0]
+  Biomedicine  P(strictly first) 0.000  P(tied first) 0.000  median 2.00 [2.0, 3.0]
+  PNT          P(strictly first) 0.000  P(tied first) 0.000  median 3.00 [2.0, 3.0]
+  RF           P(strictly first) 0.000  P(tied first) 0.000  median 4.00 [4.0, 4.0]
+  Networked    P(strictly first) 0.000  P(tied first) 0.000  median 5.00 [5.0, 5.0]
+
+Weights + symmetric +/-1, p = 0.20, reflected
+  Geophysics   P(strictly first) 0.885  P(tied first) 0.006  median 1.00 [1.0, 2.0]
+  Biomedicine  P(strictly first) 0.064  P(tied first) 0.001  median 3.00 [1.0, 4.0]
+  PNT          P(strictly first) 0.044  P(tied first) 0.005  median 2.00 [2.0, 3.0]
+  RF           P(strictly first) 0.001  P(tied first) 0.000  median 4.00 [3.0, 5.0]
+  Networked    P(strictly first) 0.000  P(tied first) 0.000  median 5.00 [4.0, 5.0]
+
+Weights + symmetric +/-1, p = 0.45 (observed disagreement rate), reflected
+  Geophysics   P(strictly first) 0.721  P(tied first) 0.013  median 1.00 [1.0, 3.0]
+  Biomedicine  P(strictly first) 0.113  P(tied first) 0.004  median 3.00 [1.0, 4.0]
+  PNT          P(strictly first) 0.144  P(tied first) 0.010  median 2.00 [1.0, 4.0]
+  RF           P(strictly first) 0.008  P(tied first) 0.000  median 4.00 [2.0, 5.0]
+  Networked    P(strictly first) 0.000  P(tied first) 0.000  median 5.00 [4.0, 5.0]
+
+Weights + one-directional -1, p = 0.45, clipped at 0
+  Geophysics   P(strictly first) 0.865  P(tied first) 0.006  median 1.00 [1.0, 2.0]
+  Biomedicine  P(strictly first) 0.085  P(tied first) 0.000  median 3.00 [1.0, 4.0]
+  PNT          P(strictly first) 0.044  P(tied first) 0.006  median 3.00 [1.5, 3.0]
+  RF           P(strictly first) 0.000  P(tied first) 0.000  median 4.00 [3.0, 4.0]
+  Networked    P(strictly first) 0.000  P(tied first) 0.000  median 5.00 [5.0, 5.0]
+
+Round-1 ranking, rater 1: sums {'Geophysics': 13, 'Biomedicine': 11, 'PNT': 12, 'RF': 6, 'Networked': 6} ranks {'Geophysics': 1.0, 'Biomedicine': 3.0, 'PNT': 2.0, 'RF': 4.5, 'Networked': 4.5}
+
+Round-1 ranking, rater 2: sums {'Geophysics': 10, 'Biomedicine': 8, 'PNT': 10, 'RF': 4, 'Networked': 3} ranks {'Geophysics': 1.5, 'Biomedicine': 3.0, 'PNT': 1.5, 'RF': 4.0, 'Networked': 5.0}
+
+Signed difference rater1 - rater2: mean 0.65  disagreements 9  rater 1 higher in 9
+two-sided sign test p = 0.00390625
+
+Strict reading of R4: sums {'Geophysics': 10, 'Biomedicine': 8, 'PNT': 7, 'RF': 4, 'Networked': 1} ranks {'Geophysics': 1.0, 'Biomedicine': 2.0, 'PNT': 3.0, 'RF': 4.0, 'Networked': 5.0}
+
+Weights only: P(biomedicine above PNT) = 0.5042
+Leave out Field: ranks {'Geophysics': 1.0, 'Biomedicine': 2.0, 'PNT': 3.0, 'RF': 4.0, 'Networked': 5.0}
+Leave out Inc.: ranks {'Geophysics': 1.0, 'Biomedicine': 3.0, 'PNT': 2.0, 'RF': 4.0, 'Networked': 5.0}
+Leave out Grp.: ranks {'Geophysics': 1.0, 'Biomedicine': 2.0, 'PNT': 3.0, 'RF': 4.0, 'Networked': 5.0}
+Leave out Com.: ranks {'Geophysics': 1.0, 'Biomedicine': 3.0, 'PNT': 2.0, 'RF': 4.0, 'Networked': 5.0}
+Leave out TRL: ranks {'Geophysics': 1.0, 'Biomedicine': 2.5, 'PNT': 2.5, 'RF': 4.0, 'Networked': 5.0}
+Upper TRL bound: ranks {'Geophysics': 1.0, 'Biomedicine': 2.5, 'PNT': 2.5, 'RF': 4.0, 'Networked': 5.0}
+Three one-point changes (geophysics field, incumbent, groups -1): {'Geophysics': 8, 'Biomedicine': 8, 'PNT': 8, 'RF': 4, 'Networked': 1}
